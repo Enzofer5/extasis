@@ -1,0 +1,26 @@
+{% extends "base.html" %}
+{% from "_macros.html" import opciones, rango %}
+{% block title %}Reporte de caja{% endblock %}
+{% block content %}
+<div class="page-head"><div><h1>Caja</h1><div class="sub">{{ desde|fecha_corta }} al {{ hasta|fecha_corta }}</div></div></div>
+{% include "reportes/_tabs.html" %}
+<form class="filters" method="get">{% include "reportes/_periodo.html" %}
+  <div class="row">{{ rango(desde, hasta) }}<div class="field"><label>Local</label><select name="ubicacion_id">{{ opciones(ubics, ub) }}</select></div>
+  <div class="btns"><button class="btn btn-primary" type="submit">Ver</button></div></div></form>
+<div class="kpis">
+  <div class="kpi success"><div class="lbl">Ingresos</div><div class="val">{{ ingresos|money }}</div></div>
+  <div class="kpi danger"><div class="lbl">Egresos</div><div class="val">{{ egresos|money }}</div></div>
+  <div class="kpi"><div class="lbl">Aperturas</div><div class="val">{{ cajas|length }}</div></div>
+  <div class="kpi {{ 'danger' if dif_total < 0 else ('warning' if dif_total > 0 else 'success') }}"><div class="lbl">Diferencias acumuladas</div><div class="val">{{ dif_total|money }}</div></div>
+</div>
+<div class="grid grid-2" style="align-items:start">
+  <div class="card"><h3>Por método de pago (neto)</h3>{% for m, t in metodos.items() %}<div class="flex between" style="padding:.25rem 0;border-bottom:1px solid var(--border)"><span>{{ m }}</span><b>{{ t|money }}</b></div>{% else %}<p class="muted">Sin movimientos</p>{% endfor %}</div>
+  <div class="card"><h3>Por tipo de movimiento</h3>{% for m in movs %}<div class="flex between" style="padding:.25rem 0;border-bottom:1px solid var(--border)"><span>{{ m.tipo|replace('_',' ')|capitalize }} · {{ m.metodo }}</span><b>{{ m.total|money }}</b></div>{% else %}<p class="muted">Sin movimientos</p>{% endfor %}</div>
+</div>
+<h3 class="mt-2">Aperturas y cierres</h3>
+<div class="table-wrap"><table class="cards"><thead><tr><th>N°</th><th>Local</th><th>Apertura</th><th>Cierre</th><th class="num">Esperado</th><th class="num">Real</th><th class="num">Diferencia</th></tr></thead><tbody>
+{% for c in cajas %}<tr data-href="{{ url_for('cajas.detalle', caja_id=c.id) }}"><td class="cell-main">#{{ c.id }}</td><td>{{ c.ubicacion }}</td><td>{{ c.fecha_apertura|fecha }} · {{ c.usuario_apertura }}</td>
+  <td>{{ (c.fecha_cierre|fecha ~ ' · ' ~ c.usuario_cierre) if c.fecha_cierre else 'Abierta' }}</td><td class="num">{{ c.efectivo_esperado|money if c.efectivo_esperado is not none else '—' }}</td>
+  <td class="num">{{ c.efectivo_real|money if c.efectivo_real is not none else '—' }}</td><td class="num">{% if c.diferencia is not none %}<span class="{{ 'diff-neg' if c.diferencia < 0 else ('diff-pos' if c.diferencia > 0 else '') }}">{{ c.diferencia|money }}</span>{% else %}—{% endif %}</td></tr>
+{% else %}<tr><td colspan="7" class="muted">Sin cajas en el período.</td></tr>{% endfor %}</tbody></table></div>
+{% endblock %}

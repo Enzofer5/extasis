@@ -1,0 +1,20 @@
+{% extends "base.html" %}
+{% from "_macros.html" import csrf %}
+{% block title %}Inventario #{{ i.id }}{% endblock %}
+{% block content %}
+<div class="page-head"><div><h1>Inventario #{{ i.id }}</h1><div class="sub">{{ i.ubicacion }} · {{ i.fecha|fecha }} · {{ i.usuario }}</div></div>
+  <span class="badge {{ {'Pendiente':'warning','Aprobado':'success','Rechazado':'danger'}[i.estado] }}">{{ i.estado }}</span></div>
+<div class="card"><dl class="dl"><dt>Motivo</dt><dd>{{ i.motivo }}</dd>{% if i.aprobador %}<dt>Resolvió</dt><dd>{{ i.aprobador }} · {{ i.fecha_aprobacion|fecha }}</dd>{% endif %}</dl></div>
+<div class="table-wrap mt-2"><table class="cards">
+  <thead><tr><th>Producto</th><th>Talle</th><th>Color</th><th class="num">Sistema</th><th class="num">Real</th><th class="num">Diferencia</th>{% if i.estado == 'Pendiente' %}<th class="num">Stock hoy</th>{% endif %}</tr></thead>
+  <tbody>{% for d in det %}<tr><td class="cell-main">{{ d.producto }}</td><td>{{ d.talle }}</td><td>{{ d.color }}</td><td class="num">{{ d.stock_sistema }}</td><td class="num">{{ d.stock_real }}</td>
+    <td class="num"><span class="{{ 'diff-neg' if d.diferencia < 0 else ('diff-pos' if d.diferencia > 0 else '') }}">{{ '%+d'|format(d.diferencia) }}</span></td>
+    {% if i.estado == 'Pendiente' %}<td class="num">{{ d.actual }}{% if d.actual != d.stock_sistema %} <span class="badge warning" title="El stock cambió desde el conteo">!</span>{% endif %}</td>{% endif %}</tr>{% endfor %}</tbody>
+</table></div>
+{% if i.estado == 'Pendiente' and es_admin() %}
+<form method="post" action="{{ url_for('inventarios.resolver', iid=i.id) }}" class="card mt-2">{{ csrf() }}
+  <p>Al aprobar, el stock de cada artículo contado queda exactamente igual al <b>Real</b> y se registra un ajuste.</p>
+  <div class="form-actions"><button class="btn btn-danger" name="accion" value="rechazar" type="submit">Rechazar</button>
+    <button class="btn btn-primary" name="accion" value="aprobar" type="submit" onclick="return confirm('¿Aprobar y ajustar el stock?')"><i data-lucide="check"></i>Aprobar y ajustar stock</button></div>
+</form>{% endif %}
+{% endblock %}

@@ -1,0 +1,34 @@
+{% extends "base.html" %}
+{% from "_macros.html" import csrf %}
+{% block title %}Solicitar mercadería{% endblock %}
+{% block content %}
+<div class="page-head"><div><h1>Solicitar mercadería</h1><div class="sub">El pedido le llega al dueño para aprobarlo y enviarlo desde el depósito</div></div></div>
+<form method="post" id="f-sol">
+  {{ csrf() }}<input type="hidden" name="items" id="items">
+  <div class="card">
+    {% if es_admin() %}<div class="field"><label>Local que solicita</label><select name="ubicacion_id" id="ub">{% for l in locales %}<option value="{{ l.id }}">{{ l.nombre }}</option>{% endfor %}</select></div>{% endif %}
+    <div class="field"><label>Agregar producto</label>
+      <div class="picker-results">
+        <div class="input-group"><input type="search" id="buscar" placeholder="Buscá por nombre o escaneá el código" autocomplete="off">
+          <button class="btn" type="button" id="btn-cam"><i data-lucide="camera"></i></button></div>
+        <div class="results" id="res"></div>
+      </div></div>
+  </div>
+  <div class="table-wrap mt-2"><table><thead><tr><th>Producto</th><th class="num">Cantidad</th><th></th></tr></thead><tbody id="lineas"></tbody></table></div>
+  <div class="card mt-2"><div class="field"><label>Observaciones</label><input type="text" name="observaciones" maxlength="255" placeholder="Ej: urgente para el fin de semana"></div>
+    <div class="form-actions"><button class="btn btn-primary btn-lg" type="submit"><i data-lucide="send"></i>Enviar solicitud</button></div></div>
+</form>
+{% endblock %}
+{% block scripts %}
+<script src="{{ url_for('static', filename='vendor/html5-qrcode.min.js') }}"></script>
+<script src="{{ url_for('static', filename='js/lineas.js') }}?v=1"></script>
+<script>
+(function(){
+  const ub=document.getElementById('ub');
+  const lin=Lineas({tbody:document.getElementById('lineas'),hidden:document.getElementById('items')});
+  const pk=new VariantePicker({input:document.getElementById('buscar'),results:document.getElementById('res'),ubicacion:()=>ub?ub.value:'',onPick:v=>lin.agregar(v)});
+  document.getElementById('btn-cam').onclick=()=>Escaner.abrir(c=>pk.porCodigo(c));
+  document.getElementById('f-sol').addEventListener('submit',e=>{if(!lin.items.length){e.preventDefault();toast('Agregá al menos un producto',false);}});
+})();
+</script>
+{% endblock %}

@@ -1,0 +1,50 @@
+{% extends "base.html" %}
+{% from "_macros.html" import csrf %}
+{% from "solicitudes/_estado.html" import badge_sol %}
+{% block title %}Solicitud #{{ s.id }}{% endblock %}
+{% block content %}
+<div class="page-head"><div><h1>Solicitud #{{ s.id }}</h1><div class="sub">{{ s.ubicacion }} · {{ s.fecha|fecha }} · {{ s.usuario }}</div></div>
+  <div>{{ badge_sol(s.estado) }}</div></div>
+<div class="card"><dl class="dl">
+  <dt>Estado</dt><dd>{{ badge_sol(s.estado) }}</dd>
+  {% if s.observaciones %}<dt>Observaciones</dt><dd>{{ s.observaciones }}</dd>{% endif %}
+  {% if s.respuesta %}<dt>Respuesta</dt><dd>{{ s.respuesta }}</dd>{% endif %}
+  {% if s.actualizado_en %}<dt>Última actualización</dt><dd>{{ s.actualizado_en|fecha }} · {{ s.actualizado_por_nombre }}</dd>{% endif %}
+  {% for t in transf %}<dt>Transferencia</dt><dd><a href="{{ url_for('transferencias.detalle', tid=t.id) }}">N° {{ t.id }}</a> ({{ t.estado }})</dd>{% endfor %}
+</dl></div>
+
+{% set puede_enviar = es_admin() and s.estado in ('Aprobada', 'Preparando') %}
+<form method="post" action="{{ url_for('solicitudes.cambiar_estado', sid=s.id) }}" class="mt-2">
+  {{ csrf() }}
+  <div class="table-wrap"><table class="cards">
+    <thead><tr><th>Producto</th><th>Talle</th><th>Color</th><th class="num">Pedido</th>{% if es_admin() %}<th class="num">Stock depósito</th>{% endif %}<th class="num">Stock local</th>{% if puede_enviar %}<th class="num">A enviar</th>{% endif %}</tr></thead>
+    <tbody>{% for d in det %}<tr>
+      <td class="cell-main">{{ d.producto }}</td><td>{{ d.talle }}</td><td>{{ d.color }}</td><td class="num">{{ d.cantidad }}</td>
+      {% if es_admin() %}<td class="num"><span class="badge {{ 'danger' if d.stock_deposito < d.cantidad }}">{{ d.stock_deposito }}</span></td>{% endif %}
+      <td class="num">{{ d.stock_local }}</td>
+      {% if puede_enviar %}<td class="num"><input type="number" name="enviar_{{ d.id }}" min="0" max="{{ d.stock_deposito }}" value="{{ [d.cantidad, d.stock_deposito]|min }}" style="width:90px;min-height:36px"></td>{% endif %}
+    </tr>{% endfor %}</tbody>
+  </table></div>
+
+  {% if es_admin() and s.estado in ('Pendiente','Aprobada','Preparando') %}
+  <div class="card mt-2">
+    <div class="field"><label>Respuesta / comentario (opcional)</label><input type="text" name="respuesta" maxlength="255"></div>
+    {% if puede_enviar and depositos|length > 1 %}<div class="field"><label>Enviar desde</label><select name="origen_id">{% for d in depositos %}<option value="{{ d.id }}">{{ d.nombre }}</option>{% endfor %}</select></div>{% endif %}
+    <div class="form-actions">
+      {% if s.estado == 'Pendiente' %}
+        <button class="btn btn-danger" name="estado" value="Rechazada" type="submit">Rechazar</button>
+        <button class="btn btn-primary" name="estado" value="Aprobada" type="submit"><i data-lucide="check"></i>Aprobar</button>
+      {% else %}
+        <button class="btn btn-danger" name="estado" value="Rechazada" type="submit">Rechazar</button>
+        {% if s.estado == 'Aprobada' %}<button class="btn" name="estado" value="Preparando" type="submit"><i data-lucide="package"></i>Marcar preparando</button>{% endif %}
+        <button class="btn btn-primary" name="estado" value="Enviada" type="submit"><i data-lucide="truck"></i>Enviar (descuenta del depósito)</button>
+      {% endif %}
+    </div>
+  </div>
+  {% endif %}
+  {% if s.estado == 'Enviada' and (es_admin() or g.user.ubicacion_id == s.ubicacion_id) %}
+  <div class="card mt-2"><p>La mercadería está en camino. Cuando llegue al local, confirmá la recepción para sumarla al stock.</p>
+    <div class="form-actions"><button class="btn btn-primary btn-lg" name="estado" value="Recibida" type="submit"><i data-lucide="package-check"></i>Confirmar recepción</button></div></div>
+  {% endif %}
+</form>
+{% endblock %}

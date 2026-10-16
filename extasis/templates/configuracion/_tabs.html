@@ -1,0 +1,5 @@
+<div class="chips">
+  <a class="chip {{ 'on' if request.endpoint == 'configuracion.index' }}" href="{{ url_for('configuracion.index') }}">General</a>
+  <a class="chip {{ 'on' if request.endpoint == 'configuracion.financiacion' }}" href="{{ url_for('configuracion.financiacion') }}">Tarjetas y créditos</a>
+  {% for k, m in catalogos.items() if k != 'temporadas' %}<a class="chip {{ 'on' if tabla == k }}" href="{{ url_for('catalogos.index', tabla=k) }}">{{ m.titulo }}</a>{% endfor %}
+</div>

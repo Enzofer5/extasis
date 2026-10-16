@@ -1,0 +1,60 @@
+{% extends "base.html" %}
+{% from "_macros.html" import periodo_filtro %}
+{% block title %}Locales{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div><h1>Locales</h1><div class="sub">Cada local por separado · {{ desde|fecha_corta }} al {{ hasta|fecha_corta }}</div></div>
+  <div class="actions"><a class="btn btn-primary" href="{{ url_for('transferencias.nueva') }}"><i data-lucide="truck"></i>Enviar a un local</a></div>
+</div>
+{{ periodo_filtro(periodos, clave, desde, hasta) }}
+
+{# ---------- Elegir un local ---------- #}
+<div class="grid grid-2" style="margin-bottom:1rem">
+  {% for f in filas %}
+  <a class="card" href="{{ url_for('panel.local', lid=f.id, periodo=clave if clave != 'rango' else None, desde=desde if clave == 'rango' else None, hasta=hasta if clave == 'rango' else None) }}" style="text-decoration:none;color:inherit">
+    <div class="card-head"><h3><i data-lucide="store"></i> {{ f.nombre.replace('Éxtasis — ', '') }}</h3><span class="btn btn-sm">Abrir ficha<i data-lucide="chevron-right"></i></span></div>
+    <dl class="dl">
+      <dt>Vendido</dt><dd><b>{{ f.ventas|money }}</b> · {{ f.operaciones }} ventas · {{ f.unidades }} prendas</dd>
+      <dt>Ganancia bruta</dt><dd><b class="{{ 'diff-pos' if f.bruta >= 0 else 'diff-neg' }}">{{ f.bruta|money }}</b></dd>
+      <dt>Stock en el local</dt><dd>{{ f.stock.unidades }} prendas{% if f.stock.por_agotarse %} · <span class="badge warning">{{ f.stock.por_agotarse }} por agotarse</span>{% endif %}</dd>
+    </dl>
+  </a>
+  {% else %}<div class="card muted">No hay locales activos.</div>{% endfor %}
+</div>
+
+{% if filas|length > 1 %}
+{# ---------- Destacados ---------- #}
+<div class="kpis">
+  <div class="kpi accent"><div class="lbl"><i data-lucide="trophy"></i>Vende más</div><div class="val" style="font-size:1.1rem">{{ destacados.vende_mas.nombre.replace('Éxtasis — ', '') }}</div>
+    <div class="foot">{{ destacados.vende_mas.ventas|money }}</div></div>
+  <div class="kpi success"><div class="lbl"><i data-lucide="trending-up"></i>Gana más</div><div class="val" style="font-size:1.1rem">{{ destacados.gana_mas.nombre.replace('Éxtasis — ', '') }}</div>
+    <div class="foot">{{ destacados.gana_mas.bruta|money }} de ganancia bruta</div></div>
+  <div class="kpi {{ 'warning' if destacados.reponer.stock.por_agotarse }}"><div class="lbl"><i data-lucide="package-search"></i>Necesita reponer</div>
+    <div class="val" style="font-size:1.1rem">{{ destacados.reponer.nombre.replace('Éxtasis — ', '') if destacados.reponer.stock.por_agotarse else 'Ninguno' }}</div>
+    <div class="foot">{% if destacados.reponer.stock.por_agotarse %}{{ destacados.reponer.stock.por_agotarse }} productos por agotarse{% else %}Todos con stock{% endif %}</div></div>
+</div>
+
+{# ---------- Comparativa ---------- #}
+<div class="card">
+  <div class="card-head"><h3><i data-lucide="columns-3"></i> Comparar locales</h3></div>
+  <div class="table-wrap"><table>
+    <thead><tr><th></th>{% for f in filas %}<th class="num">{{ f.nombre.replace('Éxtasis — ', '') }}</th>{% endfor %}</tr></thead>
+    <tbody>
+      <tr><td>Ventas (netas)</td>{% for f in filas %}<td class="num"><b>{{ f.ventas|money }}</b></td>{% endfor %}</tr>
+      <tr><td>Cantidad de ventas</td>{% for f in filas %}<td class="num">{{ f.operaciones }}</td>{% endfor %}</tr>
+      <tr><td>Prendas vendidas</td>{% for f in filas %}<td class="num">{{ f.unidades }}</td>{% endfor %}</tr>
+      <tr><td>Costo de la mercadería vendida</td>{% for f in filas %}<td class="num">{{ f.costo|money }}</td>{% endfor %}</tr>
+      <tr><td><b>Ganancia bruta</b></td>{% for f in filas %}<td class="num"><b class="{{ 'diff-pos' if f.bruta >= 0 else 'diff-neg' }}">{{ f.bruta|money }}</b></td>{% endfor %}</tr>
+      <tr><td>Margen</td>{% for f in filas %}<td class="num">{{ '%.1f'|format(f.margen) }}%</td>{% endfor %}</tr>
+      <tr><td>Gastos del local</td>{% for f in filas %}<td class="num">{{ f.gastos|money }}</td>{% endfor %}</tr>
+      <tr><td>Sueldos del local</td>{% for f in filas %}<td class="num">{{ f.sueldos|money }}</td>{% endfor %}</tr>
+      <tr><td><b>Ganancia neta del local</b></td>{% for f in filas %}<td class="num"><b class="{{ 'diff-pos' if f.neta >= 0 else 'diff-neg' }}">{{ f.neta|money }}</b></td>{% endfor %}</tr>
+      <tr><td>Stock actual</td>{% for f in filas %}<td class="num">{{ f.stock.unidades }} prendas</td>{% endfor %}</tr>
+      <tr><td>Valor del stock (a costo)</td>{% for f in filas %}<td class="num">{{ f.stock.valor_costo|money }}</td>{% endfor %}</tr>
+      <tr><td>Por agotarse</td>{% for f in filas %}<td class="num">{% if f.stock.por_agotarse %}<span class="badge warning">{{ f.stock.por_agotarse }}</span>{% else %}0{% endif %}</td>{% endfor %}</tr>
+    </tbody>
+  </table></div>
+  <p class="muted mb-0" style="font-size:.82rem;margin-top:.6rem">La ganancia neta del local resta sólo los gastos y sueldos cargados a ese local. Los gastos generales del negocio se ven en <a href="{{ url_for('reportes.ganancias') }}">Ganancias</a>.</p>
+</div>
+{% endif %}
+{% endblock %}

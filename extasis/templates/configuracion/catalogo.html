@@ -1,0 +1,39 @@
+{% extends "base.html" %}
+{% from "_macros.html" import csrf, estado_badge %}
+{% block title %}{{ meta.titulo }}{% endblock %}
+{% block content %}
+<div class="page-head"><div><h1>{{ meta.titulo }}</h1></div></div>
+{% include "configuracion/_tabs.html" %}
+{% macro campos(r=None) %}
+  <div class="field"><label>Nombre</label><input type="text" name="nombre" value="{{ r.nombre if r }}" required maxlength="80"></div>
+  {% if tabla == 'categorias' %}<div class="field"><label>Es subcategoría de</label><select name="parent_id"><option value="">— Categoría principal —</option>
+    {% for pid, pn in padres.items() %}{% if not r or pid != r.id %}<option value="{{ pid }}" {{ 'selected' if r and r.parent_id == pid }}>{{ pn }}</option>{% endif %}{% endfor %}</select></div>{% endif %}
+  {% if tabla == 'talles' %}<div class="field"><label>Orden</label><input type="number" name="orden" value="{{ r.orden if r else 0 }}"></div>{% endif %}
+  {% if tabla == 'categorias_gasto' %}<div class="field"><label>Tipo</label><select name="tipo">
+    <option value="SERVICIO" {{ 'selected' if r and r.tipo == 'SERVICIO' }}>Servicio / gasto fijo (luz, agua, alquiler, WiFi…)</option>
+    <option value="DIARIO" {{ 'selected' if r and r.tipo == 'DIARIO' }}>Gasto diario (se paga con la caja)</option></select></div>{% endif %}
+  {% if tabla == 'colores' %}<div class="field"><label>Color</label><input type="color" name="hex" value="{{ r.hex if r and r.hex else '#888888' }}"></div>{% endif %}
+{% endmacro %}
+<div class="grid grid-2" style="align-items:start">
+  {% if tabla != 'metodos_pago' %}
+  <form method="post" class="card">{{ csrf() }}<h3>Agregar</h3>{{ campos() }}<button class="btn btn-primary" type="submit"><i data-lucide="plus"></i>Agregar</button></form>
+  {% endif %}
+  <div class="table-wrap"><table class="cards">
+    <thead><tr><th>Nombre</th>{% if tabla in ('categorias', 'categorias_gasto') %}<th>Tipo</th>{% endif %}<th>Estado</th><th></th></tr></thead>
+    <tbody>{% for r in rows %}
+      <tr><td class="cell-main">{% if r.hex %}<i class="swatch" style="background:{{ r.hex }}"></i> {% endif %}{{ r.nombre }}</td>
+        {% if tabla == 'categorias' %}<td>{{ 'Sub de ' ~ padres.get(r.parent_id, '?') if r.parent_id else 'Principal' }}</td>{% endif %}
+        {% if tabla == 'categorias_gasto' %}<td><span class="badge {{ 'info' if r.tipo == 'SERVICIO' else 'warning' }}">{{ 'Servicio' if r.tipo == 'SERVICIO' else 'Diario (caja)' }}</span></td>{% endif %}
+        <td>{{ estado_badge(r.activo) }}</td>
+        <td class="text-right"><button class="btn btn-sm" type="button" data-modal="ed-{{ r.id }}"><i data-lucide="pencil"></i></button>
+          <form method="post" action="{{ url_for('catalogos.editar', tabla=tabla, item_id=r.id) }}" style="display:inline">{{ csrf() }}<input type="hidden" name="accion" value="estado">
+          <button class="btn btn-sm" type="submit">{{ 'Desactivar' if r.activo else 'Activar' }}</button></form>
+          {% if tabla != 'metodos_pago' %}<form method="post" action="{{ url_for('catalogos.editar', tabla=tabla, item_id=r.id) }}" style="display:inline" data-confirm="¿Eliminar '{{ r.nombre }}'?">{{ csrf() }}<input type="hidden" name="accion" value="eliminar">
+          <button class="btn btn-sm btn-danger" type="submit" title="Eliminar"><i data-lucide="trash-2"></i></button></form>{% endif %}</td></tr>
+    {% endfor %}</tbody></table></div>
+</div>
+{% for r in rows %}
+<div class="modal" id="ed-{{ r.id }}"><div class="modal-box"><div class="modal-head"><h3>Editar</h3><button class="icon-btn" data-close><i data-lucide="x"></i></button></div>
+  <form method="post" action="{{ url_for('catalogos.editar', tabla=tabla, item_id=r.id) }}">{{ csrf() }}{{ campos(r) }}<button class="btn btn-primary btn-block" type="submit">Guardar</button></form></div></div>
+{% endfor %}
+{% endblock %}

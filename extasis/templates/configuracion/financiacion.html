@@ -1,0 +1,76 @@
+{% extends "base.html" %}
+{% from "_macros.html" import csrf, estado_badge %}
+{% block title %}Tarjetas y créditos{% endblock %}
+{% block content %}
+<div class="page-head"><div><h1>Tarjetas y créditos</h1>
+  <div class="sub">Tarjetas de crédito y créditos personales (como MC Cred) con sus cuotas y el % de interés que se le cobra al cliente.</div></div>
+  <div class="actions"><button class="btn btn-primary" data-modal="m-nueva"><i data-lucide="plus"></i>Agregar tarjeta o crédito</button></div></div>
+{% include "configuracion/_tabs.html" %}
+
+{% for tipo, titulo in tipos.items() %}
+<h2 class="mt-2">{{ 'Tarjetas de crédito' if tipo == 'TARJETA' else 'Créditos personales' }}</h2>
+<div class="grid grid-3" style="align-items:start">
+  {% for e in entidades if e.tipo == tipo %}
+  <div class="card" {% if not e.activo %}style="opacity:.6"{% endif %}>
+    <div class="card-head"><h3><i data-lucide="{{ 'credit-card' if tipo == 'TARJETA' else 'hand-coins' }}"></i> {{ e.nombre }}</h3>{{ estado_badge(e.activo) }}</div>
+    <div class="table-wrap"><table>
+      <thead><tr><th>Cuotas</th><th class="num">Interés</th><th class="num">Ej. $100.000</th><th></th></tr></thead>
+      <tbody>{% for p in e.planes %}
+        <tr {% if not p.activo %}style="opacity:.5"{% endif %}><td style="white-space:nowrap"><b>{{ p.cuotas }}</b> {{ 'cuota' if p.cuotas == 1 else 'cuotas' }}</td>
+          <td class="num">{{ '%g'|format(p.interes_pct|float) }}%</td>
+          <td class="num"><small>{{ p.cuotas }} × {{ (100000 * (1 + p.interes_pct / 100) / p.cuotas)|money }}</small></td>
+          <td class="text-right"><button class="btn btn-sm" type="button" data-modal="mp-{{ p.id }}" title="Editar"><i data-lucide="pencil"></i></button></td></tr>
+      {% else %}<tr><td colspan="4" class="muted">Sin planes. Agregá al menos uno.</td></tr>{% endfor %}</tbody>
+    </table></div>
+    <form method="post" class="mt-1">{{ csrf() }}<input type="hidden" name="accion" value="plan_nuevo"><input type="hidden" name="entidad_id" value="{{ e.id }}">
+      <div class="input-group">
+        <input type="number" name="cuotas" min="1" max="60" placeholder="Cuotas" required style="max-width:110px">
+        <input type="number" name="interes_pct" min="0" step="0.01" placeholder="% interés" required>
+        <button class="btn" type="submit"><i data-lucide="plus"></i>Plan</button>
+      </div>
+    </form>
+    <div class="flex mt-1">
+      <button class="btn btn-sm" type="button" data-modal="me-{{ e.id }}"><i data-lucide="pencil"></i>Editar</button>
+      <form method="post" data-confirm="¿Eliminar {{ e.nombre }} con todos sus planes?">{{ csrf() }}<input type="hidden" name="accion" value="entidad_eliminar"><input type="hidden" name="entidad_id" value="{{ e.id }}">
+        <button class="btn btn-sm btn-danger" type="submit"><i data-lucide="trash-2"></i>Eliminar</button></form>
+    </div>
+  </div>
+  {% else %}<div class="card muted">Todavía no cargaste ninguna.</div>{% endfor %}
+</div>
+{% endfor %}
+
+<div class="modal" id="m-nueva"><div class="modal-box">
+  <div class="modal-head"><h3>Agregar tarjeta o crédito</h3><button class="icon-btn" data-close type="button"><i data-lucide="x"></i></button></div>
+  <form method="post">{{ csrf() }}<input type="hidden" name="accion" value="entidad_nueva">
+    <div class="field"><label>Tipo</label><select name="tipo">{% for k, t in tipos.items() %}<option value="{{ k }}">{{ t }}</option>{% endfor %}</select></div>
+    <div class="field"><label>Nombre</label><input type="text" name="nombre" required maxlength="60" placeholder="Ej: Visa, Cabal, MC Cred"></div>
+    <button class="btn btn-primary btn-block" type="submit">Crear</button>
+  </form>
+</div></div>
+
+{% for e in entidades %}
+<div class="modal" id="me-{{ e.id }}"><div class="modal-box">
+  <div class="modal-head"><h3>Editar {{ e.nombre }}</h3><button class="icon-btn" data-close type="button"><i data-lucide="x"></i></button></div>
+  <form method="post">{{ csrf() }}<input type="hidden" name="accion" value="entidad_editar"><input type="hidden" name="entidad_id" value="{{ e.id }}">
+    <div class="field"><label>Nombre</label><input type="text" name="nombre" value="{{ e.nombre }}" required maxlength="60"></div>
+    <div class="field"><label class="check"><input type="checkbox" name="activo" value="1" {{ 'checked' if e.activo }}> Activa (se puede elegir al vender)</label></div>
+    <button class="btn btn-primary btn-block" type="submit">Guardar</button>
+  </form>
+</div></div>
+  {% for p in e.planes %}
+  <div class="modal" id="mp-{{ p.id }}"><div class="modal-box">
+    <div class="modal-head"><h3>{{ e.nombre }} · plan de {{ p.cuotas }} cuotas</h3><button class="icon-btn" data-close type="button"><i data-lucide="x"></i></button></div>
+    <form method="post">{{ csrf() }}<input type="hidden" name="accion" value="plan_editar"><input type="hidden" name="plan_id" value="{{ p.id }}">
+      <div class="form-grid">
+        <div class="field"><label>Cuotas</label><input type="number" name="cuotas" min="1" max="60" value="{{ p.cuotas }}" required></div>
+        <div class="field"><label>% de interés</label><input type="number" name="interes_pct" min="0" step="0.01" value="{{ '%g'|format(p.interes_pct|float) }}" required></div>
+      </div>
+      <div class="field"><label class="check"><input type="checkbox" name="activo" value="1" {{ 'checked' if p.activo }}> Activo</label></div>
+      <button class="btn btn-primary btn-block" type="submit">Guardar</button>
+    </form>
+    <form method="post" class="mt-1" data-confirm="¿Eliminar este plan?">{{ csrf() }}<input type="hidden" name="accion" value="plan_eliminar"><input type="hidden" name="plan_id" value="{{ p.id }}">
+      <button class="btn btn-danger btn-block" type="submit"><i data-lucide="trash-2"></i>Eliminar plan</button></form>
+  </div></div>
+  {% endfor %}
+{% endfor %}
+{% endblock %}

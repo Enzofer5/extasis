@@ -1,0 +1,21 @@
+{% extends "base.html" %}
+{% from "_macros.html" import csrf %}
+{% block title %}{{ 'Editar usuario' if u else 'Nuevo usuario' }}{% endblock %}
+{% block content %}
+<div class="page-head"><div><h1>{{ 'Editar usuario' if u else 'Nuevo usuario' }}</h1></div></div>
+<form method="post" class="card" style="max-width:760px">{{ csrf() }}
+  <div class="form-grid">
+    <div class="field"><label>Nombre *</label><input type="text" name="nombre" value="{{ u.nombre if u }}" required></div>
+    <div class="field"><label>Usuario (para ingresar) *</label><input type="text" name="username" value="{{ u.username if u }}" required autocapitalize="none"></div>
+    <div class="field"><label>Email</label><input type="email" name="email" value="{{ u.email or '' if u }}"></div>
+    <div class="field"><label>Rol *</label><select name="rol_id" id="rol">{% for r in roles %}<option value="{{ r.id }}" data-cod="{{ r.codigo }}" {{ 'selected' if (u and u.rol_id == r.id) or (not u and r.codigo == 'LOCAL') }}>{{ r.nombre }}</option>{% endfor %}</select></div>
+    <div class="field" id="f-local"><label>Local</label><select name="ubicacion_id"><option value="">—</option>{% for l in locales %}<option value="{{ l.id }}" {{ 'selected' if u and u.ubicacion_id == l.id }}>{{ l.nombre }}</option>{% endfor %}</select></div>
+    <div class="field"><label>Estado</label><select name="activo"><option value="1">Activo</option><option value="0" {{ 'selected' if u and not u.activo }}>Inactivo</option></select></div>
+    <div class="field full"><label>{{ 'Nueva contraseña (dejar vacío para no cambiarla)' if u else 'Contraseña inicial *' }}</label>
+      <input type="password" name="password" autocomplete="new-password" {{ '' if u else 'required' }} minlength="8">
+      <small>El usuario deberá cambiarla en su primer ingreso.</small></div>
+  </div>
+  <div class="form-actions"><a class="btn btn-ghost" href="{{ url_for('usuarios.index') }}">Cancelar</a><button class="btn btn-primary" type="submit"><i data-lucide="save"></i>Guardar</button></div>
+</form>
+<script>(function(){const r=document.getElementById('rol'),f=document.getElementById('f-local');const u=()=>f.style.display=r.options[r.selectedIndex].dataset.cod==='ADMIN'?'none':'';r.onchange=u;u();})();</script>
+{% endblock %}

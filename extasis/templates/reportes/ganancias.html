@@ -1,0 +1,71 @@
+{% extends "base.html" %}
+{% from "_macros.html" import opciones, periodo_filtro, periodo_hidden %}
+{% block title %}Ventas y ganancias{% endblock %}
+{% block content %}
+<div class="page-head"><div><h1>Ventas y ganancias</h1><div class="sub">{{ desde|fecha_corta }} al {{ hasta|fecha_corta }}{% if ub %} · {{ (ubics|selectattr('id', 'equalto', ub)|first or {}).get('nombre', '')|replace('Éxtasis — ', '') }}{% else %} · todos los locales{% endif %}</div></div>
+  <div class="actions"><a class="btn" href="{{ request.full_path }}{{ '&' if '?' in request.full_path else '?' }}csv=1"><i data-lucide="download"></i>Excel (CSV)</a></div></div>
+{% include "reportes/_tabs.html" %}
+{{ periodo_filtro(periodos, clave, desde, hasta) }}
+<form class="filters" method="get"><div class="row">{{ periodo_hidden(clave, desde, hasta) }}
+  <div class="field"><label>Local</label><select name="ubicacion_id" onchange="this.form.submit()">{{ opciones(ubics, ub, 'Todos los locales') }}</select></div>
+</div></form>
+
+{% if sin_costo.renglones %}
+<div class="flash warning"><span>Hay {{ sin_costo.unidades }} prendas vendidas sin costo registrado en este período. Su costo se toma como $ 0, así que la ganancia aparece más alta de lo real. Cargá el precio de compra de esos productos.</span></div>
+{% endif %}
+
+{# ---------- Cuenta de resultados ---------- #}
+<div class="grid grid-2" style="align-items:start;margin-bottom:1rem">
+  <div class="card">
+    <div class="card-head"><h3><i data-lucide="calculator"></i> Resultado del período</h3></div>
+    <div class="table-wrap"><table><tbody>
+      <tr><td>Ventas netas <span class="muted">({{ total.operaciones }} ventas · {{ total.unidades }} prendas)</span></td><td class="num"><b>{{ total.ventas|money }}</b></td></tr>
+      <tr><td>− Costo de la mercadería vendida</td><td class="num">{{ total.costo|money }}</td></tr>
+      <tr><td><b>= Ganancia bruta</b> <span class="muted">({{ '%.1f'|format(total.bruta / total.ventas * 100) if total.ventas else 0 }}% de lo vendido)</span></td>
+        <td class="num"><b class="{{ 'diff-pos' if total.bruta >= 0 else 'diff-neg' }}">{{ total.bruta|money }}</b></td></tr>
+      <tr><td>− Gastos registrados</td><td class="num">{{ total.gastos|money }}</td></tr>
+      <tr><td>− Sueldos registrados</td><td class="num">{{ total.sueldos|money }}</td></tr>
+      <tr><td><b>= Ganancia neta</b></td><td class="num"><b class="{{ 'diff-pos' if total.neta >= 0 else 'diff-neg' }}">{{ total.neta|money }}</b></td></tr>
+    </tbody></table></div>
+    <p class="muted mb-0" style="font-size:.82rem;margin-top:.6rem">
+      Las ventas ya descuentan descuentos, devoluciones y ventas anuladas. El costo es el que tenía cada prenda al momento de venderla.
+      {% if not total.gastos and not total.sueldos %}<br><b>No hay gastos ni sueldos cargados en este período</b>, por eso la ganancia neta es igual a la bruta: no es la ganancia real del negocio hasta que se carguen.
+      {% else %}<br>La ganancia neta sólo descuenta los gastos y sueldos que están cargados en el sistema.{% endif %}
+      {% if ub %}<br>Con un local elegido se cuentan sólo los gastos y sueldos asignados a ese local.{% endif %}
+    </p>
+  </div>
+  <div class="card"><div class="card-head"><h3>Últimos 12 meses</h3></div><div class="chart-box" style="height:280px"><canvas id="ch-m"></canvas></div></div>
+</div>
+
+{% if por_local %}
+<div class="card" style="margin-bottom:1rem">
+  <div class="card-head"><h3><i data-lucide="store"></i> Resultado de cada local</h3><a class="btn btn-sm" href="{{ url_for('panel.locales', periodo=clave if clave != 'rango' else None, desde=desde if clave == 'rango' else None, hasta=hasta if clave == 'rango' else None) }}">Comparar locales</a></div>
+  <div class="table-wrap"><table class="cards"><thead><tr><th>Local</th><th class="num">Ventas</th><th class="num">Costo</th><th class="num">Ganancia bruta</th><th class="num">Gastos</th><th class="num">Sueldos</th><th class="num">Ganancia neta</th></tr></thead><tbody>
+  {% for r in por_local %}<tr><td class="cell-main">{{ r.etiqueta.replace('Éxtasis — ', '') }}{% if r.etiqueta == 'Negocio general' %} <span class="muted">(gastos sin local)</span>{% endif %}</td>
+    <td class="num">{{ r.ventas|money }}</td><td class="num">{{ r.costo|money }}</td><td class="num">{{ r.bruta|money }}</td>
+    <td class="num">{{ r.gastos|money }}</td><td class="num">{{ r.sueldos|money }}</td>
+    <td class="num"><b class="{{ 'diff-neg' if r.neta < 0 else 'diff-pos' }}">{{ r.neta|money }}</b></td></tr>{% endfor %}
+  <tr><td class="cell-main"><b>Total</b></td><td class="num"><b>{{ total.ventas|money }}</b></td><td class="num">{{ total.costo|money }}</td><td class="num"><b>{{ total.bruta|money }}</b></td>
+    <td class="num">{{ total.gastos|money }}</td><td class="num">{{ total.sueldos|money }}</td><td class="num"><b>{{ total.neta|money }}</b></td></tr>
+  </tbody></table></div>
+</div>
+{% endif %}
+
+<div class="grid grid-2" style="align-items:start">
+  <div class="card"><div class="card-head"><h3>Productos más vendidos</h3></div><div class="table-wrap"><table class="cards"><thead><tr><th>Producto</th><th class="num">Prendas</th><th class="num">Vendido</th><th class="num">Ganancia</th></tr></thead><tbody>
+  {% for r in por_prod %}<tr><td class="cell-main">{{ r.etiqueta }}</td><td class="num">{{ r.unidades }}</td><td class="num">{{ r.total|money }}</td><td class="num">{{ r.ganancia_bruta|money }}</td></tr>{% else %}<tr><td colspan="4" class="muted">Sin datos</td></tr>{% endfor %}</tbody></table></div></div>
+  <div class="card"><div class="card-head"><h3>Por categoría</h3></div><div class="table-wrap"><table class="cards"><thead><tr><th>Categoría</th><th class="num">Vendido</th><th class="num">Ganancia</th></tr></thead><tbody>
+  {% for r in por_cat %}<tr><td class="cell-main">{{ r.etiqueta }}</td><td class="num">{{ r.total|money }}</td><td class="num">{{ r.ganancia_bruta|money }}</td></tr>{% else %}<tr><td colspan="3" class="muted">Sin datos</td></tr>{% endfor %}</tbody></table></div></div>
+</div>
+{% endblock %}
+{% block scripts %}
+<script src="{{ url_for('static', filename='vendor/chart.umd.min.js') }}"></script>
+<script src="{{ url_for('static', filename='js/charts.js') }}?v=2"></script>
+<script>
+Charts.base();
+Charts.lineas('ch-m', {{ mensual|map(attribute='etiqueta')|list|tojson }}, [
+  {label:'Ventas', data: {{ mensual|map(attribute='ventas')|map('float')|list|tojson }}},
+  {label:'Ganancia bruta', data: {{ mensual|map(attribute='bruta')|map('float')|list|tojson }}, color:'#1e9a5a'},
+  {label:'Ganancia neta', data: {{ mensual|map(attribute='neta')|map('float')|list|tojson }}, color:'#d49a12'}]);
+</script>
+{% endblock %}

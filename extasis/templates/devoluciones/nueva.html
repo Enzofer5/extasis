@@ -1,0 +1,105 @@
+{% extends "base.html" %}
+{% from "_macros.html" import csrf %}
+{% block title %}Devolución o cambio{% endblock %}
+{% block content %}
+<div class="page-head"><div><h1>Devolución o cambio</h1><div class="sub">Buscá la venta, marcá lo que devuelve y, si se lleva otra cosa, agregala. El sistema calcula quién le paga a quién.</div></div></div>
+<form method="get" class="filters"><div class="row">
+  <div class="field"><label>N° de venta (está en el ticket)</label><input type="number" name="venta_id" value="{{ v.id if v else '' }}" required inputmode="numeric" {{ '' if v else 'autofocus' }}></div>
+  <div class="btns"><button class="btn btn-primary" type="submit"><i data-lucide="search"></i>Buscar venta</button>
+    <a class="btn" href="{{ url_for('ventas.index', buscar=1) }}">Buscar en el historial</a></div></div></form>
+{% if v %}
+  {% if v.estado != 'Completada' %}
+  <div class="flash warning"><span>La venta #{{ v.id }} está <b>{{ v.estado }}</b>: no admite devoluciones.</span></div>
+  {% elif not caja %}
+  <div class="flash warning"><span>La caja del local está cerrada. <a href="{{ url_for('cajas.local', ub_id=v.ubicacion_id) }}">Abrí la caja</a> para registrar la devolución o el cambio.</span></div>
+  {% else %}
+  <form method="post" id="f-dev">{{ csrf() }}<input type="hidden" name="venta_id" value="{{ v.id }}"><input type="hidden" name="nuevos" id="nuevos" value="[]">
+    <div class="card"><dl class="dl"><dt>Venta</dt><dd>#{{ v.id }} · {{ v.fecha|fecha }} · {{ v.ubicacion }}</dd>
+      <dt>Pagó con</dt><dd>{{ v.metodo }}{% if v.entidad %} · {{ v.entidad }} {{ v.cuotas }} cuotas{% endif %}</dd>
+      <dt>Total</dt><dd>{{ v.total|money }}{% if v.descuento > 0 or v.recargo > 0 %} <span class="muted">(el descuento/interés se prorratea)</span>{% endif %}</dd></dl></div>
+
+    <h3 class="mt-2"><span class="paso">1</span> ¿Qué devuelve?</h3>
+    <div class="table-wrap"><table class="cards">
+      <thead><tr><th>Producto</th><th>Talle</th><th>Color</th><th class="num">Vendido</th><th class="num">Ya devuelto</th><th class="num">Valor c/u</th><th class="num">Devuelve</th></tr></thead>
+      <tbody>{% for d in det %}<tr><td class="cell-main">{{ d.producto }}</td><td>{{ d.talle }}</td><td>{{ d.color }}</td><td class="num">{{ d.cantidad }}</td><td class="num">{{ d.devuelto }}</td>
+        <td class="num">{{ d.valor_unit|money }}</td>
+        <td class="num">{% if d.pendiente > 0 %}<input type="number" class="cant-dev" data-valor="{{ d.valor_unit }}" name="cant_{{ d.id }}" min="0" max="{{ d.pendiente }}" value="{{ 1 if det|length == 1 and d.pendiente == 1 else 0 }}" style="width:80px;min-height:36px">{% else %}—{% endif %}</td></tr>{% endfor %}</tbody>
+    </table></div>
+
+    <h3 class="mt-2"><span class="paso">2</span> ¿Se lleva otro producto a cambio? <small class="muted">(opcional)</small></h3>
+    <div class="card">
+      <div class="picker-results">
+        <div class="input-group"><input type="search" id="buscar" placeholder="Escaneá o buscá el producto nuevo" autocomplete="off">
+          <button class="btn" type="button" id="btn-cam"><i data-lucide="camera"></i></button></div>
+        <div class="results" id="res"></div>
+      </div>
+      <div class="table-wrap mt-1"><table><thead><tr><th>Producto</th><th class="num">Stock</th><th class="num">Cant.</th><th></th></tr></thead><tbody id="lineas"></tbody></table></div>
+    </div>
+
+    <h3 class="mt-2"><span class="paso">3</span> Diferencia</h3>
+    <div class="card">
+      <div class="totals">
+        <div class="line"><span>Devuelve</span><span id="r-dev">$ 0</span></div>
+        <div class="line"><span>Se lleva</span><span id="r-nue">$ 0</span></div>
+        <div class="total"><span id="r-txt">Sin diferencia</span><span id="r-dif">$ 0</span></div>
+      </div>
+      <div id="metodo-box" class="mt-1" style="display:none">
+        <label id="metodo-lbl">¿Cómo paga la diferencia?</label>
+        <div class="pay-methods">{% for m in metodos %}<label><input type="radio" name="metodo_pago_id" value="{{ m.id }}" data-codigo="{{ m.codigo }}" {{ 'checked' if m.codigo == 'EFECTIVO' }}><span>{{ m.nombre }}</span></label>{% endfor %}</div>
+        <div class="field mt-1" id="plan-sel" style="display:none"><label>Tarjeta / crédito y cuotas</label><select name="plan_id" id="plan_id"></select></div>
+      </div>
+      <div class="field mt-1"><label>Motivo *</label><input type="text" name="motivo" required maxlength="255" placeholder="Ej: cambio de talle, falla"></div>
+      <p class="muted" style="font-size:.85rem">Solo la diferencia entra o sale de la caja; así el cierre de caja cuadra.</p>
+      <div class="form-actions"><button class="btn btn-primary btn-lg" type="submit"><i data-lucide="check"></i>Registrar</button></div>
+    </div>
+  </form>
+  {% endif %}
+{% endif %}
+{% endblock %}
+{% block scripts %}
+{% if v and caja and v.estado == 'Completada' %}
+<script src="{{ url_for('static', filename='vendor/html5-qrcode.min.js') }}"></script>
+<script src="{{ url_for('static', filename='js/lineas.js') }}?v=2"></script>
+<script>
+(function(){
+  const FIN = {{ financiacion|tojson }};
+  let lin = null;
+  lin = Lineas({tbody: document.getElementById('lineas'), hidden: document.getElementById('nuevos'), maxStock: true, precioVenta: true, onChange: () => calcular()});
+  const pk = new VariantePicker({input: document.getElementById('buscar'), results: document.getElementById('res'), ubicacion: () => {{ v.ubicacion_id }}, onPick: v => lin.agregar(v)});
+  document.getElementById('btn-cam').onclick = () => Escaner.abrir(c => pk.porCodigo(c));
+  document.querySelectorAll('.cant-dev').forEach(i => i.addEventListener('input', calcular));
+  document.querySelectorAll('input[name=metodo_pago_id]').forEach(i => i.addEventListener('change', planes));
+  function planes(){
+    const m = document.querySelector('input[name=metodo_pago_id]:checked'), box = document.getElementById('plan-sel'), sel = document.getElementById('plan_id');
+    const ops = m ? FIN[m.dataset.codigo] : null, dif = calcular(true);
+    if (!ops || !ops.length || dif <= 0) { box.style.display = 'none'; sel.innerHTML = ''; return; }
+    box.style.display = '';
+    sel.innerHTML = ops.map(e => e.planes.map(p => `<option value="${p.id}">${esc(e.nombre)} · ${p.cuotas} ${p.cuotas === 1 ? 'pago' : 'cuotas'} de ${money(dif * (1 + p.interes / 100) / p.cuotas)}${p.interes ? ' (+' + p.interes + '%)' : ''}</option>`).join('')).join('');
+  }
+  function calcular(soloValor){
+    let dev = 0; document.querySelectorAll('.cant-dev').forEach(i => dev += (+i.value || 0) * (+i.dataset.valor));
+    const nue = (lin ? lin.items : []).reduce((a, b) => a + b.cantidad * b.precio, 0);
+    const dif = Math.round((nue - dev) * 100) / 100;
+    if (soloValor === true) return dif;
+    document.getElementById('r-dev').textContent = money(dev);
+    document.getElementById('r-nue').textContent = money(nue);
+    document.getElementById('r-dif').textContent = money(Math.abs(dif));
+    document.getElementById('r-txt').textContent = dif > 0 ? 'EL CLIENTE PAGA' : (dif < 0 ? 'HAY QUE DEVOLVERLE' : 'Sin diferencia');
+    document.getElementById('r-dif').style.color = dif > 0 ? 'var(--success)' : (dif < 0 ? 'var(--danger)' : '');
+    document.getElementById('metodo-box').style.display = dif !== 0 ? '' : 'none';
+    document.getElementById('metodo-lbl').textContent = dif > 0 ? '¿Cómo paga la diferencia el cliente?' : '¿Cómo le devolvés la plata?';
+    planes();
+    return dif;
+  }
+  document.getElementById('f-dev').addEventListener('submit', e => {
+    let dev = 0; document.querySelectorAll('.cant-dev').forEach(i => dev += (+i.value || 0));
+    if (!dev) { e.preventDefault(); toast('Indicá qué producto devuelve', false); return; }
+    const dif = calcular(true);
+    const msg = dif > 0 ? `El cliente paga ${money(dif)}` : (dif < 0 ? `Le devolvés ${money(-dif)}` : 'Sin diferencia de dinero');
+    if (!confirm(`¿Registrar? ${msg}.`)) e.preventDefault();
+  });
+  calcular();
+})();
+</script>
+{% endif %}
+{% endblock %}

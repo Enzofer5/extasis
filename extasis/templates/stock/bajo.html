@@ -1,0 +1,16 @@
+{% extends "base.html" %}
+{% from "_macros.html" import opciones %}
+{% block title %}Bajo stock{% endblock %}
+{% block content %}
+<div class="page-head"><div><h1>Por agotarse</h1><div class="sub">Productos que llegaron al stock mínimo o se terminaron</div></div>
+  <div class="actions">{% if es_admin() %}<a class="btn btn-primary" href="{{ url_for('transferencias.nueva') }}"><i data-lucide="truck"></i>Enviar a un local</a>{% endif %}</div></div>
+{% if ubics %}<form class="filters" method="get"><div class="row"><div class="field"><label>Ubicación</label>
+  <select name="ubicacion_id" onchange="this.form.submit()">{{ opciones(ubics, filtro_ub, 'Todas') }}</select></div></div></form>{% endif %}
+<div class="table-wrap"><table class="cards">
+  <thead><tr><th>Producto</th><th>Talle</th><th>Color</th>{% if ubics %}<th>Ubicación</th>{% endif %}<th class="num">Stock</th><th class="num">Mínimo</th></tr></thead>
+  <tbody>{% for r in rows %}<tr data-href="{{ url_for('productos.detalle', producto_id=r.producto_id) }}">
+    <td class="cell-main">{{ r.producto }}</td><td>{{ r.talle }}</td><td>{{ r.color }}</td>{% if ubics %}<td>{{ r.ubicacion }}</td>{% endif %}
+    <td class="num"><span class="badge {{ 'danger' if r.cantidad <= 0 else 'warning' }}">{{ r.cantidad }}</span></td><td class="num">{{ r.stock_minimo }}</td></tr>
+  {% else %}<tr><td colspan="6" class="muted">No hay productos con bajo stock. 👌</td></tr>{% endfor %}</tbody>
+</table></div>
+{% endblock %}

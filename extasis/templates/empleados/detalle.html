@@ -1,0 +1,28 @@
+{% extends "base.html" %}
+{% from "_macros.html" import csrf, estado_badge %}
+{% block title %}{{ e.apellido }}, {{ e.nombre }}{% endblock %}
+{% block content %}
+<div class="page-head"><div><h1>{{ e.apellido }}, {{ e.nombre }}</h1><div class="sub">{{ e.puesto }} · {{ e.ubicacion or 'General' }} {{ estado_badge(e.activo) }}</div></div>
+  <div class="actions"><a class="btn" href="{{ url_for('empleados.form', eid=e.id) }}"><i data-lucide="pencil"></i>Editar</a></div></div>
+<div class="grid grid-2" style="align-items:start">
+  <div class="card"><dl class="dl"><dt>DNI</dt><dd>{{ e.dni }}</dd><dt>Teléfono</dt><dd>{{ e.telefono or '—' }}</dd><dt>Email</dt><dd>{{ e.email or '—' }}</dd>
+    <dt>Ingreso</dt><dd>{{ e.fecha_ingreso|fecha_corta or '—' }}</dd><dt>Sueldo</dt><dd>{{ e.sueldo|money }}</dd><dt>Total pagado</dt><dd><b>{{ total|money }}</b></dd></dl></div>
+  <form method="post" action="{{ url_for('empleados.pago', eid=e.id) }}" class="card">{{ csrf() }}
+    <h3>Registrar pago</h3>
+    <div class="form-grid">
+      <div class="field"><label>Concepto *</label><input type="text" name="concepto" value="Sueldo" required list="conceptos">
+        <datalist id="conceptos"><option>Sueldo</option><option>Adelanto</option><option>Aguinaldo</option><option>Vacaciones</option><option>Bono</option><option>Horas extra</option></datalist></div>
+      <div class="field"><label>Período *</label><input type="month" name="periodo" value="{{ periodo }}" required></div>
+      <div class="field"><label>Monto *</label><input type="number" name="monto" step="0.01" min="0.01" value="{{ e.sueldo }}" required></div>
+      <div class="field"><label>Fecha</label><input type="date" name="fecha" value="{{ hoy }}"></div>
+      <div class="field"><label>Método</label><select name="metodo_pago_id">{% for m in metodos %}<option value="{{ m.id }}">{{ m.nombre }}</option>{% endfor %}</select></div>
+      <div class="field"><label>Observaciones</label><input type="text" name="observaciones"></div>
+    </div>
+    <div class="form-actions"><button class="btn btn-primary" type="submit">Registrar pago</button></div>
+  </form>
+</div>
+<h3 class="mt-2">Historial de pagos</h3>
+<div class="table-wrap"><table class="cards"><thead><tr><th>Fecha</th><th>Concepto</th><th>Período</th><th>Método</th><th class="num">Monto</th><th>Registró</th></tr></thead><tbody>
+{% for p in pagos %}<tr><td>{{ p.fecha|fecha_corta }}</td><td class="cell-main">{{ p.concepto }}</td><td>{{ p.periodo }}</td><td>{{ p.metodo }}</td><td class="num">{{ p.monto|money }}</td><td>{{ p.usuario }}</td></tr>
+{% else %}<tr><td colspan="6" class="muted">Sin pagos registrados.</td></tr>{% endfor %}</tbody></table></div>
+{% endblock %}

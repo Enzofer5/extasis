@@ -1,0 +1,18 @@
+{% extends "base.html" %}
+{% block title %}Devolución #{{ d.id }}{% endblock %}
+{% block content %}
+<div class="page-head"><div><h1>{{ 'Cambio' if d.venta_cambio_id else 'Devolución' }} #{{ d.id }}</h1><div class="sub">{{ d.ubicacion }} · {{ d.fecha|fecha }} · {{ d.usuario }}</div></div>
+  <div class="actions"><a class="btn" href="{{ url_for('ventas.detalle', venta_id=d.venta_id) }}">Venta original #{{ d.venta_id }}</a>
+    {% if d.venta_cambio_id %}<a class="btn btn-primary" href="{{ url_for('ventas.detalle', venta_id=d.venta_cambio_id) }}">Venta del cambio #{{ d.venta_cambio_id }}</a>{% endif %}</div></div>
+<div class="kpis">
+  <div class="kpi"><div class="lbl">Valor devuelto</div><div class="val">{{ d.total|money }}</div></div>
+  {% if d.venta_cambio_id %}<div class="kpi"><div class="lbl">Se llevó a cambio</div><div class="val">{{ (d.total + d.diferencia)|money }}</div></div>{% endif %}
+  <div class="kpi {{ 'success' if d.diferencia > 0 else ('warning' if d.diferencia < 0 else '') }}"><div class="lbl">Diferencia</div>
+    <div class="val">{{ d.diferencia|abs|money }}</div>
+    <div class="foot">{% if d.diferencia > 0 %}Pagó el cliente{% elif d.diferencia < 0 %}Se le devolvió al cliente{% else %}Sin diferencia de dinero{% endif %}{% if d.metodo %} · {{ d.metodo }}{% endif %}</div></div>
+</div>
+<div class="card"><dl class="dl"><dt>Motivo</dt><dd>{{ d.motivo }}</dd></dl></div>
+<h3 class="mt-2">Productos devueltos</h3>
+<div class="table-wrap"><table class="cards"><thead><tr><th>Producto</th><th>Talle</th><th>Color</th><th class="num">Cant.</th><th class="num">Monto</th></tr></thead><tbody>
+{% for i in items %}<tr><td class="cell-main">{{ i.producto }}</td><td>{{ i.talle }}</td><td>{{ i.color }}</td><td class="num">{{ i.cantidad }}</td><td class="num">{{ i.monto|money }}</td></tr>{% endfor %}</tbody></table></div>
+{% endblock %}

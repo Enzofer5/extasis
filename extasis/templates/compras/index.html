@@ -1,0 +1,23 @@
+{% extends "base.html" %}
+{% from "_macros.html" import paginacion, vacio, aplicar_filtros, opciones, rango, filtro_btns %}
+{% block title %}Compras{% endblock %}
+{% block content %}
+<div class="page-head"><div><h1>Compras</h1><div class="sub">Mercadería recibida de proveedores (ingresa al depósito)</div></div>
+  <div class="actions"><a class="btn btn-primary" href="{{ url_for('compras.nueva') }}"><i data-lucide="plus"></i>Registrar compra</a></div></div>
+<form class="filters" method="get"><div class="row">
+  <div class="field"><label>Proveedor</label><select name="proveedor_id">{{ opciones(proveedores, request.args.proveedor_id, 'Todos', 'razon_social') }}</select></div>
+  <div class="field"><label>N° factura</label><input type="search" name="q" value="{{ request.args.q or '' }}"></div>
+  {{ rango(desde, hasta) }}
+  {{ filtro_btns('compras.index') }}
+</div></form>
+{% if not buscado %}{{ aplicar_filtros() }}
+{% elif rows %}
+<div class="table-wrap"><table class="cards">
+  <thead><tr><th>N°</th><th>Fecha</th><th>Proveedor</th><th>Factura</th><th>Depósito</th><th class="num">Total</th><th class="num">Saldo</th></tr></thead>
+  <tbody>{% for c in rows %}<tr data-href="{{ url_for('compras.detalle', cid=c.id) }}">
+    <td class="cell-main">#{{ c.id }}</td><td>{{ c.fecha|fecha_corta }}</td><td>{{ c.razon_social }}</td><td>{{ c.numero_factura or '—' }}</td><td>{{ c.ubicacion }}</td>
+    <td class="num">{{ c.total|money }}</td><td class="num">{% if c.saldo > 0 %}<span class="badge warning">{{ c.saldo|money }}</span>{% else %}<span class="badge success">Pagada</span>{% endif %}</td></tr>{% endfor %}</tbody>
+</table></div>
+{{ paginacion(pag) }}
+{% else %}<div class="card">{{ vacio() }}</div>{% endif %}
+{% endblock %}

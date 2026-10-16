@@ -1,0 +1,64 @@
+{% extends "base.html" %}
+{% from "_macros.html" import csrf, estado_badge %}
+{% block title %}{{ p.nombre }}{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div><h1>{{ p.nombre }}</h1><div class="sub mono">{{ p.codigo_interno }}{% if p.codigo_barras %} · {{ p.codigo_barras }}{% endif %}</div></div>
+  <div class="actions">
+    <a class="btn" href="{{ url_for('productos.etiquetas', producto_id=p.id) }}" target="_blank"><i data-lucide="barcode"></i>Etiquetas</a>
+    {% if es_admin() %}
+    <a class="btn" href="{{ url_for('stock.ajuste', q=p.codigo_interno) }}"><i data-lucide="package-plus"></i>Cargar stock</a>
+    <a class="btn btn-primary" href="{{ url_for('productos.editar', producto_id=p.id) }}"><i data-lucide="pencil"></i>Editar</a>
+    {% endif %}
+  </div>
+</div>
+<div class="grid grid-2" style="grid-template-columns:auto 1fr;align-items:start">
+  {% if p.imagen %}<img class="prod-img" src="{{ url_for('static', filename='uploads/' ~ p.imagen) }}" alt="">{% endif %}
+  <div class="card" {% if not p.imagen %}style="grid-column:1/-1"{% endif %}>
+    <dl class="dl">
+      <dt>Precio de venta</dt><dd><b style="font-size:1.2rem">{{ p.precio_venta|money }}</b></dd>
+      {% if es_admin() %}<dt>Precio de compra</dt><dd>{{ p.precio_compra|money }}
+        {% if p.precio_compra and p.precio_compra > 0 %}<span class="muted">· margen {{ '%.0f'|format((p.precio_venta - p.precio_compra) / p.precio_compra * 100) }}%</span>{% endif %}</dd>{% endif %}
+      <dt>Marca</dt><dd>{{ p.marca or '—' }}</dd>
+      <dt>Categoría</dt><dd>{{ p.categoria or '—' }}{% if p.subcategoria %} / {{ p.subcategoria }}{% endif %}</dd>
+      <dt>Género</dt><dd>{{ p.genero }}</dd>
+      <dt>Alta</dt><dd>{{ p.creado_en|fecha }}</dd>
+      <dt>Estado</dt><dd>{{ estado_badge(p.activo) }}</dd>
+      {% if p.descripcion %}<dt>Descripción</dt><dd>{{ p.descripcion }}</dd>{% endif %}
+    </dl>
+    {% if es_admin() %}
+    <form method="post" action="{{ url_for('productos.cambiar_estado', producto_id=p.id) }}" class="mt-2" data-confirm="¿Confirmás el cambio de estado del producto?">
+      {{ csrf() }}<button class="btn btn-sm {{ 'btn-danger' if p.activo }}" type="submit">{{ 'Desactivar producto' if p.activo else 'Activar producto' }}</button></form>
+    {% endif %}
+  </div>
+</div>
+
+<div class="card mt-2">
+  <div class="card-head"><h2>Stock por variante y ubicación</h2><span class="badge accent">Total: {{ total_general }} u.</span></div>
+  <div class="table-wrap"><table class="cards">
+    <thead><tr><th>Talle</th><th>Color</th><th>Código de barras</th>{% for u in ubics %}<th class="num">{{ u.nombre.replace('Éxtasis — ', '') }}</th>{% endfor %}{% if ubics|length > 1 %}<th class="num">Total</th>{% endif %}{% if es_admin() %}<th></th>{% endif %}</tr></thead>
+    <tbody>{% for v in variantes %}
+    <tr {% if not v.variante_activa %}style="opacity:.5"{% endif %}>
+      <td class="cell-main">T. {{ v.talle }}{% if v.color != 'Único' %} · {{ v.color }}{% endif %}</td>
+      <td>{% if v.color_hex %}<i class="swatch" style="background:{{ v.color_hex }}"></i> {% endif %}{{ v.color }}</td>
+      <td class="mono">{{ v.codigo_barras }}</td>
+      {% for u in ubics %}<td class="num"><span class="badge {{ 'danger' if v.stock[u.id] <= 0 else '' }}">{{ v.stock[u.id] }}</span></td>{% endfor %}
+      {% if ubics|length > 1 %}<td class="num"><b>{{ v.total }}</b></td>{% endif %}
+      {% if es_admin() %}<td><button class="btn btn-sm" type="button" data-modal="mv-{{ v.variante_id }}"><i data-lucide="settings-2"></i></button></td>{% endif %}
+    </tr>{% else %}<tr><td colspan="9" class="muted">Sin variantes.</td></tr>{% endfor %}</tbody>
+    {% if variantes and ubics|length > 1 %}<tfoot><tr><td colspan="3">Totales</td>{% for u in ubics %}<td class="num">{{ totales[u.id] }}</td>{% endfor %}<td class="num">{{ total_general }}</td>{% if es_admin() %}<td></td>{% endif %}</tr></tfoot>{% endif %}
+  </table></div>
+</div>
+
+{% if es_admin() %}{% for v in variantes %}
+<div class="modal" id="mv-{{ v.variante_id }}"><div class="modal-box">
+  <div class="modal-head"><h3>T. {{ v.talle }} · {{ v.color }}</h3><button class="icon-btn" data-close><i data-lucide="x"></i></button></div>
+  <form method="post" action="{{ url_for('productos.editar_variante', variante_id=v.variante_id) }}">{{ csrf() }}<input type="hidden" name="accion" value="codigo">
+    <div class="field"><label>Código de barras</label><div class="input-group"><input type="text" name="codigo_barras" value="{{ v.codigo_barras }}" required><button class="btn" type="submit">Guardar</button></div></div></form>
+  <form method="post" action="{{ url_for('productos.editar_variante', variante_id=v.variante_id) }}">{{ csrf() }}<input type="hidden" name="accion" value="minimo">
+    <div class="field"><label>Stock mínimo (alerta de bajo stock)</label><div class="input-group"><input type="number" name="stock_minimo" min="0" value="2"><button class="btn" type="submit">Aplicar</button></div></div></form>
+  <form method="post" action="{{ url_for('productos.editar_variante', variante_id=v.variante_id) }}">{{ csrf() }}<input type="hidden" name="accion" value="estado">
+    <button class="btn {{ 'btn-danger' if v.variante_activa }} btn-block" type="submit">{{ 'Desactivar variante' if v.variante_activa else 'Activar variante' }}</button></form>
+</div></div>
+{% endfor %}{% endif %}
+{% endblock %}

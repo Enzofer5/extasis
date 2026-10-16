@@ -1,0 +1,61 @@
+{% extends "base.html" %}
+{% from "_macros.html" import csrf %}
+{% block title %}Enviar a un local{% endblock %}
+{% block content %}
+<div class="page-head"><div><h1>Enviar a un local</h1><div class="sub">Marcá lo que mandás: se descuenta del depósito y se suma al local en el momento</div></div>
+  <div class="actions"><a class="btn" href="{{ url_for('transferencias.index') }}"><i data-lucide="history"></i>Envíos anteriores</a></div></div>
+<form method="post" id="f-tr" data-multi>
+  {{ csrf() }}<input type="hidden" name="items" id="items">
+  <div class="card">
+    <div class="form-grid">
+      <div class="field"><label>Origen</label><select name="origen_id" id="origen">{% for u in ubics %}<option value="{{ u.id }}" {{ 'selected' if u.id == origen_default }}>{{ u.nombre }}</option>{% endfor %}</select></div>
+      <div class="field"><label>Destino</label><select name="destino_id" id="destino">{% for u in ubics if u.tipo == 'LOCAL' %}<option value="{{ u.id }}">{{ u.nombre }}</option>{% endfor %}
+        {% for u in ubics if u.tipo != 'LOCAL' %}<option value="{{ u.id }}">{{ u.nombre }}</option>{% endfor %}</select></div>
+      <div class="field full"><label>Agregar producto (escaneá o buscá)</label>
+        <div class="picker-results">
+          <div class="input-group"><input type="search" id="buscar" placeholder="Código de barras, código interno o nombre" autocomplete="off">
+            <button class="btn" type="button" id="btn-cam"><i data-lucide="camera"></i></button></div>
+          <div class="results" id="res"></div>
+        </div></div>
+    </div>
+  </div>
+  <div class="table-wrap mt-2"><table>
+    <thead><tr><th>Producto</th><th class="num">Disp. origen</th><th class="num">Cantidad</th><th></th></tr></thead>
+    <tbody id="lineas"></tbody>
+  </table></div>
+  <div class="card mt-2"><div class="field"><label>Observaciones</label><input type="text" name="observaciones" maxlength="255"></div>
+    <div class="form-actions"><button class="btn btn-primary btn-lg" type="button" id="btn-rev"><i data-lucide="eye"></i>Revisar y confirmar</button></div></div>
+
+  <div class="modal" id="m-conf"><div class="modal-box">
+    <div class="modal-head"><h3>Confirmar transferencia</h3><button class="icon-btn" data-close type="button"><i data-lucide="x"></i></button></div>
+    <dl class="dl"><dt>Origen</dt><dd id="c-ori"></dd><dt>Destino</dt><dd id="c-des"></dd><dt>Unidades</dt><dd id="c-uni"></dd></dl>
+    <div class="table-wrap mt-1"><table><thead><tr><th>Producto</th><th>Talle</th><th>Color</th><th class="num">Cant.</th></tr></thead><tbody id="c-det"></tbody></table></div>
+    <p class="muted" style="font-size:.85rem">Se descontará del origen y se sumará al destino. El movimiento queda registrado.</p>
+    <div class="form-actions"><button class="btn btn-ghost" type="button" data-close>Volver</button><button class="btn btn-primary" type="submit"><i data-lucide="check"></i>Confirmar transferencia</button></div>
+  </div></div>
+</form>
+{% endblock %}
+{% block scripts %}
+<script src="{{ url_for('static', filename='vendor/html5-qrcode.min.js') }}"></script>
+<script src="{{ url_for('static', filename='js/lineas.js') }}?v=1"></script>
+<script>
+(function(){
+  const ori=document.getElementById('origen'), des=document.getElementById('destino');
+  const lin=Lineas({tbody:document.getElementById('lineas'),hidden:document.getElementById('items'),maxStock:true});
+  const pk=new VariantePicker({input:document.getElementById('buscar'),results:document.getElementById('res'),ubicacion:()=>ori.value,onPick:v=>lin.agregar(v)});
+  document.getElementById('btn-cam').onclick=()=>Escaner.abrir(c=>pk.porCodigo(c));
+  ori.onchange=()=>{ if(lin.items.length){ if(confirm('Cambiar el origen vacía la lista. ¿Continuar?')){lin.items.length=0;lin.render();} } };
+  document.getElementById('btn-rev').onclick=()=>{
+    const it=lin.items.filter(i=>i.cantidad>0);
+    if(!it.length){toast('Agregá productos a transferir',false);return;}
+    if(ori.value===des.value){toast('Origen y destino deben ser distintos',false);return;}
+    const over=it.find(i=>i.cantidad>i.stock); if(over){toast(`No hay stock suficiente de ${over.producto} T.${over.talle} (disp. ${over.stock})`,false);return;}
+    document.getElementById('c-ori').textContent=ori.options[ori.selectedIndex].text;
+    document.getElementById('c-des').textContent=des.options[des.selectedIndex].text;
+    document.getElementById('c-uni').textContent=it.reduce((a,b)=>a+b.cantidad,0);
+    document.getElementById('c-det').innerHTML=it.map(i=>`<tr><td>${esc(i.producto)}</td><td>${esc(i.talle)}</td><td>${esc(i.color)}</td><td class="num">${i.cantidad}</td></tr>`).join('');
+    Modal.open('m-conf');
+  };
+})();
+</script>
+{% endblock %}

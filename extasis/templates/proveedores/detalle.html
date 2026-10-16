@@ -1,0 +1,37 @@
+{% extends "base.html" %}
+{% from "_macros.html" import csrf, estado_badge %}
+{% block title %}{{ p.razon_social }}{% endblock %}
+{% block content %}
+<div class="page-head"><div><h1>{{ p.razon_social }}</h1><div class="sub">{{ p.cuit or '' }} {{ estado_badge(p.activo) }}</div></div>
+  <div class="actions"><a class="btn" href="{{ url_for('proveedores.form', pid=p.id) }}"><i data-lucide="pencil"></i>Editar</a>
+    <a class="btn btn-primary" href="{{ url_for('compras.nueva') }}"><i data-lucide="shopping-cart"></i>Nueva compra</a></div></div>
+<div class="kpis">
+  <div class="kpi"><div class="lbl">Total comprado</div><div class="val">{{ total_comprado|money }}</div></div>
+  <div class="kpi"><div class="lbl">Pagos realizados</div><div class="val">{{ total_pagado|money }}</div></div>
+  <div class="kpi {{ 'warning' if p.deuda > 0 else 'success' }}"><div class="lbl">Deuda pendiente</div><div class="val">{{ p.deuda|money }}</div></div>
+</div>
+<div class="grid grid-2" style="align-items:start">
+  <div class="card"><dl class="dl">
+    <dt>Contacto</dt><dd>{{ p.contacto or '—' }}</dd><dt>Teléfono</dt><dd>{{ p.telefono or '—' }}</dd><dt>Email</dt><dd>{{ p.email or '—' }}</dd>
+    <dt>Dirección</dt><dd>{{ p.direccion or '—' }}</dd>{% if p.observaciones %}<dt>Obs.</dt><dd>{{ p.observaciones }}</dd>{% endif %}</dl></div>
+  {% if p.deuda > 0 %}
+  <form method="post" action="{{ url_for('proveedores.pago', pid=p.id) }}" class="card">{{ csrf() }}
+    <h3>Registrar pago a cuenta</h3>
+    <div class="form-grid">
+      <div class="field"><label>Monto</label><input type="number" name="monto" step="0.01" min="0.01" max="{{ p.deuda }}" required></div>
+      <div class="field"><label>Método</label><select name="metodo_pago_id">{% for m in metodos %}<option value="{{ m.id }}">{{ m.nombre }}</option>{% endfor %}</select></div>
+      <div class="field"><label>Fecha</label><input type="date" name="fecha" value="{{ hoy }}"></div>
+      <div class="field"><label>Observaciones</label><input type="text" name="observaciones"></div>
+    </div>
+    <div class="form-actions"><button class="btn btn-primary" type="submit">Registrar pago</button></div>
+  </form>{% endif %}
+</div>
+<h3 class="mt-2">Historial de compras</h3>
+<div class="table-wrap"><table class="cards"><thead><tr><th>N°</th><th>Fecha</th><th>Factura</th><th class="num">Total</th><th class="num">Saldo</th></tr></thead><tbody>
+{% for c in compras %}<tr data-href="{{ url_for('compras.detalle', cid=c.id) }}"><td class="cell-main">#{{ c.id }}</td><td>{{ c.fecha|fecha_corta }}</td><td>{{ c.numero_factura or '—' }}</td><td class="num">{{ c.total|money }}</td><td class="num">{{ c.saldo|money }}</td></tr>
+{% else %}<tr><td colspan="5" class="muted">Sin compras.</td></tr>{% endfor %}</tbody></table></div>
+<h3 class="mt-2">Pagos realizados</h3>
+<div class="table-wrap"><table class="cards"><thead><tr><th>Fecha</th><th>Compra</th><th>Método</th><th class="num">Monto</th><th>Usuario</th></tr></thead><tbody>
+{% for pa in pagos %}<tr><td>{{ pa.fecha|fecha_corta }}</td><td>{{ '#' ~ pa.compra_id if pa.compra_id else 'A cuenta' }}</td><td>{{ pa.metodo }}</td><td class="num">{{ pa.monto|money }}</td><td>{{ pa.usuario }}</td></tr>
+{% else %}<tr><td colspan="5" class="muted">Sin pagos posteriores.</td></tr>{% endfor %}</tbody></table></div>
+{% endblock %}

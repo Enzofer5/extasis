@@ -1,0 +1,13 @@
+{% extends "base.html" %}
+{% block title %}Cuentas corrientes{% endblock %}
+{% block content %}
+<div class="page-head"><div><h1>Cuentas corrientes</h1><div class="sub">Clientes con saldo</div></div></div>
+<div class="kpis"><div class="kpi accent"><div class="lbl">Total adeudado</div><div class="val">{{ total|money }}</div><div class="foot">{{ rows|length }} clientes</div></div></div>
+<div class="table-wrap"><table class="cards">
+  <thead><tr><th>Cliente</th><th>DNI</th><th>Teléfono</th>{% if es_admin() %}<th>Local</th>{% endif %}<th class="num">Debe</th><th class="num">Haber</th><th class="num">Saldo</th><th>Último mov.</th></tr></thead>
+  <tbody>{% for r in rows %}<tr data-href="{{ url_for('clientes.detalle', cid=r.id) }}">
+    <td class="cell-main">{{ r.apellido }}, {{ r.nombre }}</td><td>{{ r.dni or '—' }}</td><td>{{ r.whatsapp or r.telefono or '—' }}</td>{% if es_admin() %}<td>{{ r.ubicacion or '—' }}</td>{% endif %}
+    <td class="num">{{ r.debe|money }}</td><td class="num">{{ r.haber|money }}</td><td class="num"><span class="badge {{ 'warning' if r.saldo > 0 else 'success' }}">{{ r.saldo|money }}</span></td><td>{{ r.ultimo_movimiento|fecha_corta }}</td></tr>
+  {% else %}<tr><td colspan="8" class="muted">No hay cuentas con saldo.</td></tr>{% endfor %}</tbody>
+</table></div>
+{% endblock %}

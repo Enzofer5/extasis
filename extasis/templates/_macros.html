@@ -1,0 +1,65 @@
+{% macro csrf() %}<input type="hidden" name="csrf_token" value="{{ csrf_token() }}">{% endmacro %}
+
+{% macro paginacion(pag) %}
+{% if pag and pag.total %}
+<div class="pagination">
+  <span>{{ pag.total }} resultado{{ 's' if pag.total != 1 }} · página {{ pag.page }} de {{ pag.pages }}</span>
+  <div class="pages">
+    {% if pag.has_prev %}<a class="btn btn-sm" href="{{ pag.url(pag.page - 1) }}"><i data-lucide="chevron-left"></i>Anterior</a>{% endif %}
+    {% if pag.has_next %}<a class="btn btn-sm" href="{{ pag.url(pag.page + 1) }}">Siguiente<i data-lucide="chevron-right"></i></a>{% endif %}
+  </div>
+</div>
+{% endif %}
+{% endmacro %}
+
+{% macro vacio(texto='No hay resultados.', icono='search-x') %}
+<div class="empty"><i data-lucide="{{ icono }}"></i><div>{{ texto }}</div></div>
+{% endmacro %}
+
+{% macro aplicar_filtros() %}
+<div class="card empty"><i data-lucide="filter"></i><div>Usá los filtros y tocá <b>Buscar</b> para ver resultados.</div></div>
+{% endmacro %}
+
+{% macro opciones(items, sel, vacio='Todos', label='nombre') %}
+<option value="">{{ vacio }}</option>
+{% for i in items %}<option value="{{ i.id }}" {{ 'selected' if sel|string == i.id|string }}>{{ i[label] }}</option>{% endfor %}
+{% endmacro %}
+
+{% macro rango(desde, hasta) %}
+<div class="field"><label>Desde</label><input type="date" name="desde" value="{{ desde }}"></div>
+<div class="field"><label>Hasta</label><input type="date" name="hasta" value="{{ hasta }}"></div>
+{% endmacro %}
+
+{# Selector de período (hoy / 7 días / este mes / mes anterior / fechas a elección) que conserva los demás filtros #}
+{% macro periodo_filtro(periodos, clave, desde, hasta) %}
+{% set otros = {} %}{% for k, v in request.args.items() if k not in ('periodo', 'desde', 'hasta', 'page', 'csv') %}{% set _ = otros.update({k: v}) %}{% endfor %}
+<div class="chips">
+  {% for k, t in periodos %}<a class="chip {{ 'on' if clave == k }}" href="{{ url_for(request.endpoint, periodo=k, **dict(request.view_args or {}, **otros)) }}">{{ t }}</a>{% endfor %}
+</div>
+<form class="filters" method="get"><div class="row">
+  {% for k, v in otros.items() %}<input type="hidden" name="{{ k }}" value="{{ v }}">{% endfor %}
+  {{ rango(desde, hasta) }}
+  <div class="btns"><button class="btn {{ 'btn-primary' if clave == 'rango' }}" type="submit"><i data-lucide="calendar-range"></i>Ver estas fechas</button></div>
+</div></form>
+{% endmacro %}
+
+{# Mantiene el período elegido al cambiar otros filtros (por ejemplo, el local) #}
+{% macro periodo_hidden(clave, desde, hasta) %}
+{% if clave == 'rango' %}<input type="hidden" name="desde" value="{{ desde }}"><input type="hidden" name="hasta" value="{{ hasta }}">
+{% else %}<input type="hidden" name="periodo" value="{{ clave }}">{% endif %}
+{% endmacro %}
+
+{% macro estado_badge(activo) %}
+{% if activo %}<span class="badge success">Activo</span>{% else %}<span class="badge">Inactivo</span>{% endif %}
+{% endmacro %}
+
+{% macro venta_estado(e) %}
+<span class="badge {{ {'Completada':'success','Anulada':'danger','Devuelta':'warning'}.get(e, '') }}">{{ e }}</span>
+{% endmacro %}
+
+{% macro filtro_btns(endpoint) %}
+<div class="btns">
+  <button class="btn btn-primary" type="submit" name="buscar" value="1"><i data-lucide="search"></i>Buscar</button>
+  <a class="btn btn-ghost" href="{{ url_for(endpoint) }}">Limpiar</a>
+</div>
+{% endmacro %}

@@ -1,0 +1,16 @@
+{% extends "base.html" %}
+{% from "_macros.html" import csrf, estado_badge %}
+{% block title %}Usuarios{% endblock %}
+{% block content %}
+<div class="page-head"><div><h1>Usuarios</h1><div class="sub">Accesos al sistema</div></div>
+  <div class="actions"><a class="btn btn-primary" href="{{ url_for('usuarios.form') }}"><i data-lucide="user-plus"></i>Nuevo usuario</a></div></div>
+<div class="table-wrap"><table class="cards">
+  <thead><tr><th>Nombre</th><th>Usuario</th><th>Rol</th><th>Local</th><th>Último ingreso</th><th>Estado</th><th></th></tr></thead>
+  <tbody>{% for u in rows %}<tr>
+    <td class="cell-main">{{ u.nombre }}{% if u.debe_cambiar_password %} <span class="badge warning">clave de prueba</span>{% endif %}</td><td class="mono">{{ u.username }}</td><td>{{ u.rol }}</td><td>{{ u.ubicacion or 'Todos' }}</td>
+    <td>{{ u.ultimo_login|fecha or 'Nunca' }}</td><td>{{ estado_badge(u.activo) }}</td>
+    <td class="text-right"><a class="btn btn-sm" href="{{ url_for('usuarios.form', uid=u.id) }}"><i data-lucide="pencil"></i></a>
+      {% if u.id != g.user.id %}<form method="post" action="{{ url_for('usuarios.eliminar', uid=u.id) }}" style="display:inline" data-confirm="¿Eliminar el usuario {{ u.username }}?">{{ csrf() }}
+      <button class="btn btn-sm btn-danger" type="submit"><i data-lucide="trash-2"></i></button></form>{% endif %}</td></tr>{% endfor %}</tbody>
+</table></div>
+{% endblock %}

@@ -1,0 +1,21 @@
+{% extends "base.html" %}
+{% from "_macros.html" import csrf, opciones %}
+{% block title %}{{ 'Editar empleado' if e else 'Nuevo empleado' }}{% endblock %}
+{% block content %}
+<div class="page-head"><div><h1>{{ 'Editar empleado' if e else 'Nuevo empleado' }}</h1></div></div>
+<form method="post" class="card" style="max-width:900px">{{ csrf() }}
+  <div class="form-grid">
+    <div class="field"><label>Nombre *</label><input type="text" name="nombre" value="{{ e.nombre if e }}" required></div>
+    <div class="field"><label>Apellido *</label><input type="text" name="apellido" value="{{ e.apellido if e }}" required></div>
+    <div class="field"><label>DNI *</label><input type="text" name="dni" value="{{ e.dni if e }}" required inputmode="numeric"></div>
+    <div class="field"><label>Teléfono</label><input type="tel" name="telefono" value="{{ e.telefono or '' if e }}"></div>
+    <div class="field"><label>Email</label><input type="email" name="email" value="{{ e.email or '' if e }}"></div>
+    <div class="field"><label>Puesto</label><select name="puesto">{% for p in puestos %}<option {{ 'selected' if e and e.puesto == p }}>{{ p }}</option>{% endfor %}</select></div>
+    <div class="field"><label>Fecha de ingreso</label><input type="date" name="fecha_ingreso" value="{{ e.fecha_ingreso or '' if e }}"></div>
+    <div class="field"><label>Sueldo</label><input type="number" name="sueldo" step="0.01" min="0" value="{{ e.sueldo if e else 0 }}"></div>
+    <div class="field"><label>Local asignado</label><select name="ubicacion_id">{{ opciones(ubics, e.ubicacion_id if e, '— General —') }}</select></div>
+    <div class="field"><label>Estado</label><select name="activo"><option value="1">Activo</option><option value="0" {{ 'selected' if e and not e.activo }}>Inactivo</option></select></div>
+  </div>
+  <div class="form-actions"><a class="btn btn-ghost" href="{{ url_for('empleados.index') }}">Cancelar</a><button class="btn btn-primary" type="submit"><i data-lucide="save"></i>Guardar</button></div>
+</form>
+{% endblock %}

@@ -1,0 +1,41 @@
+{% extends "base.html" %}
+{% from "_macros.html" import csrf %}
+{% block title %}Entradas y ajustes de stock{% endblock %}
+{% block content %}
+<div class="page-head"><div><h1>Entradas, salidas y ajustes</h1><div class="sub">Para recibir mercadería sin factura, corregir errores o dar de baja fallas. Las compras con factura se cargan en <a href="{{ url_for('compras.nueva') }}">Compras</a>.</div></div></div>
+<form method="post" class="card" style="max-width:760px" id="f-aj">
+  {{ csrf() }}
+  <input type="hidden" name="variante_id" id="variante_id">
+  <div class="form-grid">
+    <div class="field"><label>Ubicación</label><select name="ubicacion_id" id="ubic">{% for u in ubics %}<option value="{{ u.id }}" {{ 'selected' if deposito and u.id == deposito.id }}>{{ u.nombre }}</option>{% endfor %}</select></div>
+    <div class="field"><label>Tipo de movimiento</label><select name="tipo" id="tipo">
+      <option value="ENTRADA">Entrada (+ suma)</option><option value="SALIDA">Salida (− resta)</option><option value="AJUSTE">Ajuste (fijar cantidad exacta)</option></select></div>
+    <div class="field full"><label>Producto / variante</label>
+      <div class="picker-results">
+        <div class="input-group"><input type="search" id="buscar" placeholder="Escaneá o buscá por nombre / código" value="{{ request.args.q or '' }}" autocomplete="off">
+          <button class="btn" type="button" id="btn-cam"><i data-lucide="camera"></i></button></div>
+        <div class="results" id="res"></div>
+      </div>
+      <div id="sel" class="mt-1 muted">Ninguna variante seleccionada.</div>
+    </div>
+    <div class="field"><label id="lbl-cant">Cantidad</label><input type="number" name="cantidad" min="0" required inputmode="numeric"></div>
+    <div class="field"><label>Motivo *</label><input type="text" name="motivo" required maxlength="255" placeholder="Ej: ingreso de mercadería, falla, error de carga"></div>
+  </div>
+  <div class="form-actions"><button class="btn btn-primary" type="submit"><i data-lucide="check"></i>Registrar</button></div>
+</form>
+{% endblock %}
+{% block scripts %}
+<script src="{{ url_for('static', filename='vendor/html5-qrcode.min.js') }}"></script>
+<script>
+(function(){
+  const sel=document.getElementById('sel'), vid=document.getElementById('variante_id'), ub=document.getElementById('ubic');
+  const picker=new VariantePicker({input:document.getElementById('buscar'),results:document.getElementById('res'),ubicacion:()=>ub.value,
+    onPick:v=>{vid.value=v.variante_id;sel.innerHTML=`<span class="badge accent">${esc(v.producto)} · T. ${esc(v.talle)} · ${esc(v.color)}</span> Stock actual en la ubicación: <b>${v.stock}</b>`;}});
+  document.getElementById('btn-cam').onclick=()=>Escaner.abrir(c=>picker.porCodigo(c));
+  document.getElementById('tipo').onchange=e=>document.getElementById('lbl-cant').textContent=e.target.value==='AJUSTE'?'Cantidad real (queda exactamente esta)':'Cantidad';
+  ub.onchange=()=>{vid.value='';sel.textContent='Volvé a seleccionar la variante para ver su stock en esta ubicación.';};
+  document.getElementById('f-aj').addEventListener('submit',e=>{if(!vid.value){e.preventDefault();toast('Seleccioná una variante',false);}});
+  const b=document.getElementById('buscar'); if(b.value){b.dispatchEvent(new Event('input'));}
+})();
+</script>
+{% endblock %}

@@ -1,0 +1,19 @@
+{% extends "base.html" %}
+{% block title %}Cajas{% endblock %}
+{% block content %}
+<div class="page-head"><div><h1>Cajas de los locales</h1><div class="sub">Cada local tiene su propia caja</div></div>
+  <div class="actions"><a class="btn" href="{{ url_for('cajas.historial') }}"><i data-lucide="history"></i>Historial</a></div></div>
+<div class="grid grid-2">
+{% for l in locales %}
+  <div class="card">
+    <div class="card-head"><h2>{{ l.nombre }}</h2>{% if l.caja %}<span class="badge success">Abierta</span>{% else %}<span class="badge">Cerrada</span>{% endif %}</div>
+    {% if l.resumen %}
+      <dl class="dl"><dt>Abrió</dt><dd>{{ l.caja.usuario_apertura }} · {{ l.caja.fecha_apertura|fecha }}</dd>
+        <dt>Monto inicial</dt><dd>{{ l.caja.monto_inicial|money }}</dd><dt>Ventas</dt><dd>{{ l.resumen.ventas_total|money }} ({{ l.resumen.cant_ventas }})</dd>
+        <dt>Efectivo esperado</dt><dd><b>{{ l.resumen.esperado|money }}</b></dd></dl>
+    {% else %}<p class="muted">La caja está cerrada.</p>{% endif %}
+    <a class="btn btn-primary mt-1" href="{{ url_for('cajas.local', ub_id=l.id) }}">{{ 'Ver caja' if l.caja else 'Abrir caja' }}</a>
+  </div>
+{% endfor %}
+</div>
+{% endblock %}

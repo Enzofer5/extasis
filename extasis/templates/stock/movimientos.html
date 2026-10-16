@@ -1,0 +1,25 @@
+{% extends "base.html" %}
+{% from "_macros.html" import paginacion, vacio, aplicar_filtros, opciones, rango, filtro_btns %}
+{% block title %}Historial de movimientos{% endblock %}
+{% block content %}
+<div class="page-head"><div><h1>Historial de movimientos</h1><div class="sub">Entradas, compras, envíos a locales, ventas, devoluciones, anulaciones y ajustes · {{ desde|fecha_corta }} al {{ hasta|fecha_corta }}</div></div>
+  <div class="actions"><a class="btn" href="{{ request.full_path }}{{ '&' if '?' in request.full_path else '?' }}csv=1"><i data-lucide="download"></i>Excel (CSV)</a></div></div>
+<form class="filters" method="get"><div class="row">
+  <div class="field wide"><label>Producto o código</label><input type="search" name="q" value="{{ request.args.q or '' }}"></div>
+  <div class="field"><label>Tipo</label><select name="tipo"><option value="">Todos</option>{% for t in tipos %}<option value="{{ t }}" {{ 'selected' if request.args.tipo == t }}>{{ nombres.get(t, t) }}</option>{% endfor %}</select></div>
+  {% if ubics %}<div class="field"><label>Ubicación</label><select name="ubicacion_id">{{ opciones(ubics, request.args.ubicacion_id, 'Todas') }}</select></div>{% endif %}
+  {{ rango(desde, hasta) }}
+  {{ filtro_btns('stock.movimientos') }}
+</div></form>
+{% if not buscado %}{{ aplicar_filtros() }}
+{% elif rows %}
+<div class="table-wrap"><table class="cards">
+  <thead><tr><th>Fecha</th><th>Tipo</th><th>Producto</th><th>Talle</th><th>Color</th><th class="num">Cant.</th><th>Desde</th><th>Hacia</th><th>Usuario</th><th>Motivo</th></tr></thead>
+  <tbody>{% for m in rows %}<tr>
+    <td>{{ m.fecha|fecha }}</td><td><span class="badge {{ {'VENTA':'info','COMPRA':'success','ENTRADA':'success','DEVOLUCION':'warning','AJUSTE':'warning','SALIDA':'danger','ANULACION':'danger'}.get(m.tipo,'') }}">{{ nombres.get(m.tipo, m.tipo) }}</span></td>
+    <td class="cell-main">{{ m.producto }}</td><td>{{ m.talle }}</td><td>{{ m.color }}</td><td class="num">{{ m.cantidad }}</td>
+    <td>{{ (m.origen or '—').replace('Éxtasis — ','') }}</td><td>{{ (m.destino or '—').replace('Éxtasis — ','') }}</td><td>{{ m.usuario }}</td><td>{{ m.motivo or '' }}</td></tr>{% endfor %}</tbody>
+</table></div>
+{{ paginacion(pag) }}
+{% else %}<div class="card">{{ vacio() }}</div>{% endif %}
+{% endblock %}

@@ -1,0 +1,54 @@
+{% extends "base.html" %}
+{% from "_macros.html" import csrf, opciones %}
+{% block title %}{{ 'Editar' if p else 'Nuevo' }} producto{% endblock %}
+{% block content %}
+{% set tiene = {} %}
+{% for v in variantes %}{% set _ = tiene.update({(v.talle_id|string) ~ '-t': true, (v.color_id|string) ~ '-c': true}) %}{% endfor %}
+<div class="page-head"><div><h1>{{ 'Editar producto' if p else 'Nuevo producto' }}</h1>{% if p %}<div class="sub">{{ p.nombre }}</div>{% endif %}</div></div>
+<form method="post" enctype="multipart/form-data">
+  {{ csrf() }}
+  <div class="grid grid-2">
+    <div class="card">
+      <h2>Datos del producto</h2>
+      <div class="form-grid">
+        <div class="field full"><label>Nombre *</label><input type="text" name="nombre" value="{{ p.nombre if p }}" required maxlength="150"></div>
+        <div class="field"><label>Código interno</label><input type="text" name="codigo_interno" value="{{ p.codigo_interno if p else '' }}" placeholder="{{ sugerido or '' }}" maxlength="30"></div>
+        <div class="field"><label>Código de barras del producto (opcional)</label><input type="text" name="codigo_barras" value="{{ p.codigo_barras or '' if p }}" maxlength="40" placeholder="Código del fabricante"></div>
+        <div class="field"><label>Marca</label><select name="marca_id">{{ opciones(marcas, p.marca_id if p, '— Sin marca —') }}</select></div>
+        <div class="field"><label>Categoría</label><select name="categoria_id">{{ opciones(categorias, p.categoria_id if p, '— Sin categoría —') }}</select></div>
+        <div class="field"><label>Subcategoría</label><select name="subcategoria_id">{{ opciones(subcategorias, p.subcategoria_id if p, '— Ninguna —') }}</select></div>
+        <div class="field"><label>Género</label><select name="genero">{% for gn in generos %}<option {{ 'selected' if (p and p.genero == gn) or (not p and gn == 'Unisex') }}>{{ gn }}</option>{% endfor %}</select></div>
+        <div class="field"><label>Precio de compra</label><input type="number" name="precio_compra" step="0.01" min="0" value="{{ p.precio_compra if p else '0' }}" inputmode="decimal"></div>
+        <div class="field"><label>Precio de venta *</label><input type="number" name="precio_venta" step="0.01" min="0" value="{{ p.precio_venta if p else '' }}" required inputmode="decimal"></div>
+        <div class="field full"><label>Descripción</label><textarea name="descripcion">{{ p.descripcion or '' if p }}</textarea></div>
+        <div class="field full"><label>Imagen</label><input type="file" name="imagen" accept="image/*">
+          {% if p and p.imagen %}<img class="prod-img mt-1" style="max-width:120px" src="{{ url_for('static', filename='uploads/' ~ p.imagen) }}" alt="">{% endif %}</div>
+      </div>
+    </div>
+    <div class="card">
+      <h2>Variantes (talle × color)</h2>
+      <p class="muted" style="font-size:.88rem">Se crea una variante por cada combinación, cada una con su propio código de barras y stock independiente.
+        {% if p %}Las variantes existentes no se borran (se pueden desactivar desde el detalle).{% endif %}</p>
+      <label>Talles</label>
+      <div class="chk-grid mb-1">{% for t in talles %}<label><input type="checkbox" name="talles" value="{{ t.id }}" {{ 'checked' if tiene.get(t.id|string ~ '-t') }}><span>{{ t.nombre }}</span></label>{% endfor %}</div>
+      <label class="mt-2">Colores</label>
+      <div class="chk-grid">{% for c in colores %}<label><input type="checkbox" name="colores" value="{{ c.id }}" {{ 'checked' if tiene.get(c.id|string ~ '-c') }}><span>{% if c.hex %}<i class="swatch" style="background:{{ c.hex }}"></i>{% endif %}{{ c.nombre }}</span></label>{% endfor %}</div>
+      <p class="muted mt-2" style="font-size:.82rem">Si no elegís talle o color se usa "Único". Podés crear más talles y colores en <a href="{{ url_for('catalogos.index', tabla='talles') }}">Configuración</a>.</p>
+      <div id="preview" class="muted" style="font-size:.85rem"></div>
+    </div>
+  </div>
+  <div class="form-actions">
+    <a class="btn btn-ghost" href="{{ url_for('productos.detalle', producto_id=p.id) if p else url_for('productos.index') }}">Cancelar</a>
+    <button class="btn btn-primary btn-lg" type="submit"><i data-lucide="save"></i>Guardar producto</button>
+  </div>
+</form>
+{% endblock %}
+{% block scripts %}
+<script>
+(function(){
+  const upd=()=>{const t=document.querySelectorAll('input[name=talles]:checked').length||1,c=document.querySelectorAll('input[name=colores]:checked').length||1;
+    document.getElementById('preview').textContent=`Combinaciones seleccionadas: ${t} talle(s) × ${c} color(es) = ${t*c} variantes.`;};
+  document.querySelectorAll('.chk-grid input').forEach(i=>i.addEventListener('change',upd));upd();
+})();
+</script>
+{% endblock %}

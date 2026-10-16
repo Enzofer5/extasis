@@ -1,0 +1,6 @@
+<div class="chips">
+  <a class="chip {{ 'on' if request.endpoint == 'reportes.ganancias' }}" href="{{ url_for('reportes.ganancias') }}">Ganancias</a>
+  <a class="chip {{ 'on' if request.endpoint == 'reportes.ventas' }}" href="{{ url_for('reportes.ventas') }}">Ventas</a>
+  <a class="chip {{ 'on' if request.endpoint == 'reportes.stock' }}" href="{{ url_for('reportes.stock') }}">Stock</a>
+  <a class="chip {{ 'on' if request.endpoint == 'reportes.caja' }}" href="{{ url_for('reportes.caja') }}">Caja</a>
+</div>

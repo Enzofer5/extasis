@@ -1,0 +1,71 @@
+<!doctype html>
+<html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Ticket N° {{ v.id }}</title>
+<style>
+  @page { size: 80mm auto; margin: 0; }
+  body { margin: 0; background: #e9e9e9; font-family: "Courier New", ui-monospace, monospace; color: #000; }
+  .ticket { width: 72mm; margin: 12px auto; background: #fff; padding: 4mm; font-size: 12px; line-height: 1.35; }
+  .c { text-align: center; } .r { text-align: right; } .b { font-weight: bold; }
+  .logo { font-size: 26px; letter-spacing: 4px; font-weight: 900; font-family: Impact, "Arial Black", sans-serif; }
+  .sep { border-top: 1px dashed #000; margin: 6px 0; }
+  table { width: 100%; border-collapse: collapse; font-size: 12px; }
+  td { vertical-align: top; padding: 1px 0; }
+  .tot { font-size: 16px; font-weight: bold; }
+  .bar { width: 72mm; margin: 0 auto; display: flex; gap: 8px; padding-top: 10px; flex-wrap: wrap; }
+  .bar button { flex: 1; font-size: 15px; padding: 10px; border: 0; border-radius: 8px; cursor: pointer; background: #111; color: #fff; }
+  .bar button.s { background: #fff; color: #111; border: 1px solid #111; }
+  .anulada { border: 2px solid #000; text-align: center; font-weight: bold; padding: 2px; margin: 4px 0; }
+  @media print { body { background: #fff; } .bar { display: none; } .ticket { margin: 0; width: 100%; } }
+</style></head>
+<body>
+<div class="bar">
+  <button onclick="window.print()">🖨 Imprimir</button>
+  <button class="s" id="pdf">⬇ PDF</button>
+  <button class="s" onclick="window.close()">Cerrar</button>
+</div>
+<div class="ticket" id="ticket">
+  <div class="c logo">{{ negocio }}</div>
+  <div class="c">INDUMENTARIA</div>
+  <div class="c">{{ v.ubicacion }}</div>
+  {% if v.ubicacion_direccion %}<div class="c">{{ v.ubicacion_direccion }}</div>{% endif %}
+  {% if v.ubicacion_telefono %}<div class="c">Tel: {{ v.ubicacion_telefono }}</div>{% endif %}
+  <div class="sep"></div>
+  <table><tr><td>Fecha: {{ v.fecha.strftime('%d/%m/%Y') }}</td><td class="r">Hora: {{ v.fecha.strftime('%H:%M') }}</td></tr></table>
+  <div class="b">Venta N° {{ '%08d'|format(v.id) }}</div>
+  {% if v.cliente %}<div>Cliente: {{ v.cliente }}</div>{% endif %}
+  {% if v.estado != 'Completada' %}<div class="anulada">VENTA {{ v.estado|upper }}</div>{% endif %}
+  <div class="sep"></div>
+  <table>
+    {% for d in det %}
+    <tr><td colspan="3">{{ d.producto }}</td></tr>
+    <tr><td>T.{{ d.talle }}{% if d.color != 'Único' %} {{ d.color }}{% endif %}</td><td class="r">{{ d.cantidad }} x {{ d.precio_unitario|money }}</td><td class="r b">{{ d.subtotal|money }}</td></tr>
+    {% endfor %}
+  </table>
+  <div class="sep"></div>
+  <table>
+    <tr><td>Subtotal</td><td class="r">{{ v.subtotal|money }}</td></tr>
+    {% if v.descuento > 0 %}<tr><td>Descuento</td><td class="r">- {{ v.descuento|money }}</td></tr>{% endif %}
+    {% if v.recargo and v.recargo > 0 %}<tr><td>Interés {{ v.cuotas }} cuotas ({{ '%g'|format(v.interes_pct|float) }}%)</td><td class="r">+ {{ v.recargo|money }}</td></tr>{% endif %}
+    {% if v.credito_cambio and v.credito_cambio > 0 %}<tr><td>A cuenta por cambio</td><td class="r">- {{ v.credito_cambio|money }}</td></tr>{% endif %}
+    <tr class="tot"><td>TOTAL</td><td class="r">{{ v.total|money }}</td></tr>
+  </table>
+  <div class="sep"></div>
+  <div>Pago: {{ v.metodo }}{% if v.entidad %} · {{ v.entidad }}{% endif %}</div>
+  {% if v.cuotas %}<div>{{ v.cuotas }} {{ 'pago' if v.cuotas == 1 else 'cuotas' }} de {{ (v.total / v.cuotas)|money }}</div>{% endif %}
+  {% if v.credito_cambio and v.credito_cambio > 0 %}<div>Diferencia abonada: {{ (v.total - v.credito_cambio)|money }}</div>{% endif %}
+  <div>Vendedor: {{ v.vendedor }}</div>
+  <div class="sep"></div>
+  <div class="c b">{{ pie }}</div>
+  <div class="c" style="font-size:10px;margin-top:4px">Comprobante no válido como factura</div>
+</div>
+<script src="{{ url_for('static', filename='vendor/html2pdf.bundle.min.js') }}"></script>
+<script>
+document.getElementById('pdf').onclick = function () {
+  if (!window.html2pdf) { alert('No se pudo cargar el generador de PDF. Usá Imprimir → Guardar como PDF.'); return; }
+  const el = document.getElementById('ticket');
+  html2pdf().set({ margin: 2, filename: 'ticket_{{ v.id }}.pdf', html2canvas: { scale: 2 },
+    jsPDF: { unit: 'mm', format: [80, Math.max(120, el.offsetHeight * 0.2646 + 10)], orientation: 'portrait' } }).from(el).save();
+};
+{% if auto %}window.addEventListener('load', () => setTimeout(() => window.print(), 300));{% endif %}
+</script>
+</body></html>

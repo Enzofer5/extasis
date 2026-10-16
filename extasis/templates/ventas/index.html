@@ -1,0 +1,30 @@
+{% extends "base.html" %}
+{% from "_macros.html" import paginacion, vacio, aplicar_filtros, opciones, rango, venta_estado, filtro_btns %}
+{% block title %}Ventas{% endblock %}
+{% block content %}
+<div class="page-head"><div><h1>Ventas</h1><div class="sub">Historial de ventas{{ ' de ' ~ g.user.ubicacion_nombre if not es_admin() }}</div></div>
+  {% if tiene_permiso('ventas.crear') %}<div class="actions"><a class="btn btn-primary" href="{{ url_for('ventas.pos') }}"><i data-lucide="scan-barcode"></i>Nueva venta</a></div>{% endif %}</div>
+<form class="filters" method="get"><div class="row">
+  <div class="field"><label>N° de venta</label><input type="number" name="numero" value="{{ request.args.numero or '' }}" inputmode="numeric"></div>
+  {{ rango(desde, hasta) }}
+  {% if ubics %}<div class="field"><label>Local</label><select name="ubicacion_id">{{ opciones(ubics, request.args.ubicacion_id) }}</select></div>{% endif %}
+  {% if usuarios %}<div class="field"><label>Vendedor</label><select name="usuario_id">{{ opciones(usuarios, request.args.usuario_id) }}</select></div>{% endif %}
+  <div class="field"><label>Método de pago</label><select name="metodo_pago_id">{{ opciones(metodos, request.args.metodo_pago_id) }}</select></div>
+  <div class="field"><label>Estado</label><select name="estado"><option value="">Todos</option>{% for e in estados %}<option {{ 'selected' if request.args.estado == e }}>{{ e }}</option>{% endfor %}</select></div>
+  <div class="field"><label>Cliente</label><input type="search" name="cliente" value="{{ request.args.cliente or '' }}"></div>
+  <div class="field"><label>Producto</label><input type="search" name="producto" value="{{ request.args.producto or '' }}"></div>
+  {{ filtro_btns('ventas.index') }}
+</div></form>
+{% if not buscado %}{{ aplicar_filtros() }}
+{% elif rows %}
+<div class="kpis"><div class="kpi accent"><div class="lbl">Total vendido (completadas)</div><div class="val">{{ totales.total|money }}</div><div class="foot">{{ totales.n }} ventas listadas</div></div></div>
+<div class="table-wrap"><table class="cards">
+  <thead><tr><th>N°</th><th>Fecha</th>{% if es_admin() %}<th>Local</th>{% endif %}<th>Vendedor</th><th>Cliente</th><th>Pago</th><th class="num">Total</th><th>Estado</th><th></th></tr></thead>
+  <tbody>{% for v in rows %}<tr data-href="{{ url_for('ventas.detalle', venta_id=v.id) }}">
+    <td class="cell-main">#{{ v.id }}</td><td>{{ v.fecha|fecha }}</td>{% if es_admin() %}<td>{{ v.ubicacion }}</td>{% endif %}<td>{{ v.vendedor }}</td><td>{{ v.cliente or '—' }}</td>
+    <td>{{ v.metodo }}</td><td class="num">{{ v.total|money }}</td><td>{{ venta_estado(v.estado) }}</td>
+    <td><a class="btn btn-sm" href="{{ url_for('ventas.ticket', venta_id=v.id) }}" target="_blank" title="Ticket"><i data-lucide="printer"></i></a></td></tr>{% endfor %}</tbody>
+</table></div>
+{{ paginacion(pag) }}
+{% else %}<div class="card">{{ vacio('No hay ventas con esos filtros.') }}</div>{% endif %}
+{% endblock %}

@@ -1,0 +1,20 @@
+{% extends "base.html" %}
+{% from "_macros.html" import paginacion, opciones, rango %}
+{% block title %}Historial de cajas{% endblock %}
+{% block content %}
+<div class="page-head"><div><h1>Historial de cajas</h1><div class="sub">Aperturas, cierres y diferencias</div></div></div>
+<form class="filters" method="get"><div class="row">
+  {% if ubics %}<div class="field"><label>Local</label><select name="ubicacion_id">{{ opciones(ubics, request.args.ubicacion_id) }}</select></div>{% endif %}
+  {{ rango(desde, hasta) }}<div class="btns"><button class="btn btn-primary" type="submit">Filtrar</button></div></div></form>
+<div class="table-wrap"><table class="cards">
+  <thead><tr><th>N°</th><th>Local</th><th>Apertura</th><th>Cierre</th><th class="num">Inicial</th><th class="num">Ventas</th><th class="num">Esperado</th><th class="num">Real</th><th class="num">Diferencia</th></tr></thead>
+  <tbody>{% for c in rows %}<tr data-href="{{ url_for('cajas.detalle', caja_id=c.id) }}">
+    <td class="cell-main">#{{ c.id }}</td><td>{{ c.ubicacion }}</td><td>{{ c.fecha_apertura|fecha }}<div class="muted" style="font-size:.78rem">{{ c.usuario_apertura }}</div></td>
+    <td>{% if c.estado == 'ABIERTA' %}<span class="badge success">Abierta</span>{% else %}{{ c.fecha_cierre|fecha }}<div class="muted" style="font-size:.78rem">{{ c.usuario_cierre }}</div>{% endif %}</td>
+    <td class="num">{{ c.monto_inicial|money }}</td><td class="num">{{ c.ventas|money }}</td><td class="num">{{ c.efectivo_esperado|money if c.efectivo_esperado is not none else '—' }}</td>
+    <td class="num">{{ c.efectivo_real|money if c.efectivo_real is not none else '—' }}</td>
+    <td class="num">{% if c.diferencia is not none %}<span class="{{ 'diff-neg' if c.diferencia < 0 else ('diff-pos' if c.diferencia > 0 else '') }}">{{ c.diferencia|money }}</span>{% else %}—{% endif %}</td></tr>
+  {% else %}<tr><td colspan="9" class="muted">Sin cajas en el período.</td></tr>{% endfor %}</tbody>
+</table></div>
+{{ paginacion(pag) }}
+{% endblock %}

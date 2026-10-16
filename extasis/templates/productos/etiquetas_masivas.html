@@ -1,0 +1,49 @@
+{% extends "base.html" %}
+{% from "_macros.html" import csrf, opciones %}
+{% block title %}Etiquetas con código de barras{% endblock %}
+{% block content %}
+<div class="page-head"><div><h1>Etiquetas</h1><div class="sub">Elegí los productos (o todos) y se imprimen las etiquetas de cada talle y color con su código de barras.</div></div></div>
+<form method="get" class="filters"><div class="row">
+  <div class="field wide"><label>Buscar</label><input type="search" name="q" value="{{ request.args.q or '' }}" placeholder="Nombre o código"></div>
+  <div class="field"><label>Categoría</label><select name="categoria_id">{{ opciones(categorias, request.args.categoria_id, 'Todas') }}</select></div>
+  <div class="btns"><button class="btn" type="submit"><i data-lucide="search"></i>Filtrar</button></div>
+</div></form>
+
+<form method="post" target="_blank" id="f-et">{{ csrf() }}
+  <div class="card mb-1">
+    <div class="form-grid cols-3">
+      <div class="field"><label>Cantidad de etiquetas</label>
+        <select name="modo" id="modo"><option value="fijo">Una cantidad fija por talle/color</option><option value="stock">Una por cada prenda en stock</option></select></div>
+      <div class="field" id="f-cant"><label>Copias por talle/color</label><input type="number" name="cant" value="1" min="1" max="50"></div>
+      {% if ubics %}<div class="field" id="f-ub" style="display:none"><label>Stock de</label><select name="ubicacion_id">{{ opciones(ubics, '', 'Todas las ubicaciones') }}</select></div>{% endif %}
+    </div>
+    <div class="flex between">
+      <label class="check"><input type="checkbox" id="todos"> <b>Seleccionar todos</b> <span class="muted" id="n-sel"></span></label>
+      <button class="btn btn-primary btn-lg" type="submit"><i data-lucide="printer"></i>Generar etiquetas</button>
+    </div>
+  </div>
+  <div class="table-wrap"><table class="cards">
+    <thead><tr><th style="width:42px"></th><th>Producto</th><th>Código</th><th>Marca</th><th>Categoría</th><th class="num">Talles/colores</th><th class="num">Precio</th></tr></thead>
+    <tbody>{% for p in prods %}<tr>
+      <td><input type="checkbox" class="sel" name="producto_id" value="{{ p.id }}" {{ 'checked' if p.id in preseleccion }} style="width:20px;height:20px"></td>
+      <td class="cell-main">{{ p.nombre }}{% if p.id in preseleccion %} <span class="badge success">recién cargado</span>{% endif %}</td>
+      <td class="mono">{{ p.codigo_interno }}</td><td>{{ p.marca or '—' }}</td><td>{{ p.categoria or '—' }}</td>
+      <td class="num">{{ p.n_var }}</td><td class="num">{{ p.precio_venta|money }}</td></tr>
+    {% else %}<tr><td colspan="7" class="muted">No hay productos.</td></tr>{% endfor %}</tbody>
+  </table></div>
+</form>
+{% endblock %}
+{% block scripts %}
+<script>
+(function(){
+  const sels = [...document.querySelectorAll('.sel')], todos = document.getElementById('todos');
+  const cuenta = () => { const n = sels.filter(s => s.checked).length; document.getElementById('n-sel').textContent = n ? `(${n} elegidos)` : ''; todos.checked = n && n === sels.length; };
+  todos.addEventListener('change', () => { sels.forEach(s => s.checked = todos.checked); cuenta(); });
+  sels.forEach(s => s.addEventListener('change', cuenta)); cuenta();
+  const modo = document.getElementById('modo');
+  modo.addEventListener('change', () => { document.getElementById('f-cant').style.display = modo.value === 'fijo' ? '' : 'none';
+    const ub = document.getElementById('f-ub'); if (ub) ub.style.display = modo.value === 'stock' ? '' : 'none'; });
+  document.getElementById('f-et').addEventListener('submit', e => { if (!sels.some(s => s.checked)) { e.preventDefault(); toast('Elegí al menos un producto', false); } });
+})();
+</script>
+{% endblock %}

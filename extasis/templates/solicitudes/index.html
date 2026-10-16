@@ -1,0 +1,20 @@
+{% extends "base.html" %}
+{% from "_macros.html" import paginacion %}
+{% from "solicitudes/_estado.html" import badge_sol %}
+{% block title %}Solicitudes de mercadería{% endblock %}
+{% block content %}
+<div class="page-head"><div><h1>Solicitudes al depósito</h1><div class="sub">Pedidos de reposición de los locales</div></div>
+  <div class="actions"><a class="btn btn-primary" href="{{ url_for('solicitudes.nueva') }}"><i data-lucide="plus"></i>Nueva solicitud</a></div></div>
+<div class="chips">
+  <a class="chip {{ 'on' if not request.args.estado and not request.args.todas }}" href="{{ url_for('solicitudes.index') }}">Abiertas</a>
+  {% for e in estados %}<a class="chip {{ 'on' if request.args.estado == e }}" href="{{ url_for('solicitudes.index', estado=e) }}">{{ e }}</a>{% endfor %}
+  <a class="chip {{ 'on' if request.args.todas }}" href="{{ url_for('solicitudes.index', todas=1) }}">Todas</a>
+</div>
+<div class="table-wrap"><table class="cards">
+  <thead><tr><th>N°</th><th>Fecha</th><th>Local</th><th>Solicitó</th><th class="num">Ítems</th><th class="num">Unidades</th><th>Estado</th></tr></thead>
+  <tbody>{% for s in rows %}<tr data-href="{{ url_for('solicitudes.detalle', sid=s.id) }}">
+    <td class="cell-main">#{{ s.id }}</td><td>{{ s.fecha|fecha }}</td><td>{{ s.ubicacion }}</td><td>{{ s.usuario }}</td><td class="num">{{ s.items }}</td><td class="num">{{ s.unidades }}</td><td>{{ badge_sol(s.estado) }}</td></tr>
+  {% else %}<tr><td colspan="7" class="muted">No hay solicitudes.</td></tr>{% endfor %}</tbody>
+</table></div>
+{{ paginacion(pag) }}
+{% endblock %}

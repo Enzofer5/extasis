@@ -1,0 +1,33 @@
+{% extends "base.html" %}
+{% from "_macros.html" import csrf %}
+{% block title %}Compra #{{ c.id }}{% endblock %}
+{% block content %}
+<div class="page-head"><div><h1>Compra #{{ c.id }}</h1><div class="sub">{{ c.razon_social }} · {{ c.fecha|fecha_corta }}</div></div>
+  <div class="actions"><a class="btn" href="{{ url_for('proveedores.detalle', pid=c.proveedor_id) }}"><i data-lucide="factory"></i>Proveedor</a></div></div>
+<div class="kpis">
+  <div class="kpi"><div class="lbl">Total</div><div class="val">{{ c.total|money }}</div></div>
+  <div class="kpi"><div class="lbl">Pagado</div><div class="val">{{ (c.total - saldo)|money }}</div></div>
+  <div class="kpi {{ 'warning' if saldo > 0 else 'success' }}"><div class="lbl">Saldo</div><div class="val">{{ saldo|money }}</div></div>
+</div>
+<div class="card"><dl class="dl">
+  <dt>Factura</dt><dd>{{ c.numero_factura or '—' }}</dd><dt>Recibió</dt><dd>{{ c.ubicacion }}</dd>
+  <dt>Método</dt><dd>{{ c.metodo or '—' }}</dd><dt>Registró</dt><dd>{{ c.usuario }} · {{ c.creado_en|fecha }}</dd>
+  {% if c.observaciones %}<dt>Obs.</dt><dd>{{ c.observaciones }}</dd>{% endif %}
+</dl></div>
+<div class="table-wrap mt-2"><table class="cards">
+  <thead><tr><th>Producto</th><th>Talle</th><th>Color</th><th class="num">Cant.</th><th class="num">Precio</th><th class="num">Subtotal</th></tr></thead>
+  <tbody>{% for d in det %}<tr><td class="cell-main">{{ d.producto }}</td><td>{{ d.talle }}</td><td>{{ d.color }}</td><td class="num">{{ d.cantidad }}</td><td class="num">{{ d.precio_compra|money }}</td><td class="num">{{ d.subtotal|money }}</td></tr>{% endfor %}</tbody>
+</table></div>
+{% if pagos %}<h3 class="mt-2">Pagos</h3><div class="table-wrap"><table class="cards"><thead><tr><th>Fecha</th><th>Método</th><th class="num">Monto</th><th>Usuario</th></tr></thead><tbody>
+{% for p in pagos %}<tr><td>{{ p.fecha|fecha_corta }}</td><td>{{ p.metodo }}</td><td class="num">{{ p.monto|money }}</td><td>{{ p.usuario }}</td></tr>{% endfor %}</tbody></table></div>{% endif %}
+{% if saldo > 0 %}
+<form method="post" action="{{ url_for('proveedores.pago', pid=c.proveedor_id) }}" class="card mt-2">{{ csrf() }}<input type="hidden" name="compra_id" value="{{ c.id }}">
+  <h3>Registrar pago de esta compra</h3>
+  <div class="form-grid cols-3">
+    <div class="field"><label>Monto</label><input type="number" name="monto" step="0.01" min="0.01" max="{{ saldo }}" value="{{ saldo }}" required></div>
+    <div class="field"><label>Método</label><select name="metodo_pago_id">{% for m in metodos if m.codigo != 'CTACTE' %}<option value="{{ m.id }}">{{ m.nombre }}</option>{% endfor %}</select></div>
+    <div class="field"><label>Fecha</label><input type="date" name="fecha" value="{{ hoy }}"></div>
+  </div>
+  <div class="form-actions"><button class="btn btn-primary" type="submit">Registrar pago</button></div>
+</form>{% endif %}
+{% endblock %}

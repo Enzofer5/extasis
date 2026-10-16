@@ -1,0 +1,44 @@
+{% extends "base.html" %}
+{% from "_macros.html" import paginacion, vacio, aplicar_filtros, opciones, filtro_btns %}
+{% block title %}Stock{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div><h1>Stock</h1><div class="sub">{{ 'Stock por ubicación: depósito y locales' if es_admin() else 'Stock de ' ~ g.user.ubicacion_nombre }}</div></div>
+  <div class="actions">
+    <a class="btn" href="{{ url_for('stock.bajo_stock') }}"><i data-lucide="trending-down"></i>Bajo stock</a>
+    {% if es_admin() %}<a class="btn" href="{{ url_for('stock.ajuste') }}"><i data-lucide="package-plus"></i>Cargar mercadería</a>
+    <a class="btn btn-primary" href="{{ url_for('transferencias.nueva') }}"><i data-lucide="truck"></i>Enviar a un local</a>{% endif %}
+  </div>
+</div>
+<form class="filters" method="get">
+  <div class="row">
+    <div class="field wide"><label>Producto o código</label>
+      <div class="input-group"><input type="search" id="q-st" name="q" value="{{ request.args.q or '' }}" placeholder="Nombre, código interno o de barras">
+      <button class="btn" type="button" onclick="Escaner.abrir(c=>{const i=document.getElementById('q-st');i.value=c;i.form.submit()})"><i data-lucide="camera"></i></button></div></div>
+    {% if es_admin() %}<div class="field"><label>Ubicación</label><select name="ubicacion_id">{{ opciones(ubics, request.args.ubicacion_id, 'Todas') }}</select></div>{% endif %}
+    <div class="field"><label>Categoría</label><select name="categoria_id">{{ opciones(categorias, request.args.categoria_id, 'Todas') }}</select></div>
+    <div class="field"><label>Marca</label><select name="marca_id">{{ opciones(marcas, request.args.marca_id, 'Todas') }}</select></div>
+    <div class="field"><label>Talle</label><select name="talle_id">{{ opciones(talles, request.args.talle_id) }}</select></div>
+    <div class="field"><label>Color</label><select name="color_id">{{ opciones(colores, request.args.color_id) }}</select></div>
+    <div class="field"><label>&nbsp;</label><label class="check"><input type="checkbox" name="con_stock" value="1" {{ 'checked' if request.args.con_stock }}> Sólo con stock</label></div>
+    {{ filtro_btns('stock.index') }}
+  </div>
+</form>
+{% if not buscado %}{{ aplicar_filtros() }}
+{% elif rows %}
+<div class="table-wrap"><table class="cards">
+  <thead><tr><th>Producto</th><th>Talle</th><th>Color</th><th class="hide-sm">Código</th>
+    {% for u in ubics_vista %}<th class="num">{{ u.nombre.replace('Éxtasis — ', '') }}</th>{% endfor %}
+    {% if ubics_vista|length > 1 %}<th class="num">Total</th>{% endif %}</tr></thead>
+  <tbody>{% for r in rows %}
+  <tr data-href="{{ url_for('productos.detalle', producto_id=r.producto_id) }}">
+    <td class="cell-main">{{ r.producto }}</td><td>{{ r.talle }}</td>
+    <td>{% if r.hex %}<i class="swatch" style="background:{{ r.hex }}"></i> {% endif %}{{ r.color }}</td><td class="mono hide-sm">{{ r.codigo_barras }}</td>
+    {% for u in ubics_vista %}{% set q = r.stock[u.id] %}<td class="num"><span class="badge {{ 'danger' if q <= 0 else ('warning' if q <= r.minimo[u.id] else '') }}">{{ q }}</span></td>{% endfor %}
+    {% if ubics_vista|length > 1 %}<td class="num"><b>{{ r.total }}</b></td>{% endif %}
+  </tr>{% endfor %}</tbody>
+</table></div>
+{{ paginacion(pag) }}
+{% else %}<div class="card">{{ vacio() }}</div>{% endif %}
+{% endblock %}
+{% block scripts %}<script src="{{ url_for('static', filename='vendor/html5-qrcode.min.js') }}"></script>{% endblock %}

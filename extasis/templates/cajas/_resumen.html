@@ -1,0 +1,16 @@
+<div class="card totals">
+  <h3>Arqueo de efectivo</h3>
+  <div class="line"><span>Monto inicial</span><span>{{ res.caja.monto_inicial|money }}</span></div>
+  <div class="line"><span>+ Ventas en efectivo</span><span>{{ res.ventas_efectivo|money }}</span></div>
+  <div class="line"><span>+ Cobros de cuentas corrientes</span><span>{{ res.cobros_efectivo|money }}</span></div>
+  <div class="line"><span>+ Ingresos</span><span>{{ res.ingresos_efectivo|money }}</span></div>
+  <div class="line"><span>− Retiros</span><span>{{ res.retiros_efectivo|money }}</span></div>
+  <div class="line"><span>− Gastos</span><span>{{ res.gastos_efectivo|money }}</span></div>
+  <div class="line"><span>− Devoluciones</span><span>{{ res.devoluciones_efectivo|money }}</span></div>
+  <div class="total"><span>EFECTIVO ESPERADO</span><span>{{ res.esperado|money }}</span></div>
+</div>
+<div class="card">
+  <h3>Ingresos por método de pago</h3>
+  {% for m, t in res.por_metodo.items() %}<div class="flex between" style="padding:.25rem 0"><span>{{ m }}</span><b>{{ t|money }}</b></div>
+  {% else %}<p class="muted mb-0">Sin movimientos.</p>{% endfor %}
+</div>

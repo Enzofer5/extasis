@@ -1,0 +1,114 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#ffffff">
+  <meta name="csrf-token" content="{{ csrf_token() }}">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <title>{% block title %}ÉXTASIS{% endblock %} · ÉXTASIS</title>
+  <link rel="icon" href="{{ url_for('static', filename='img/icon.png') }}">
+  <link rel="apple-touch-icon" href="{{ url_for('static', filename='img/icon.png') }}">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/app.css') }}?v=5">
+  {% block head %}{% endblock %}
+</head>
+<body>
+{% if g.user %}
+{% set ep = request.endpoint or '' %}
+{% macro nav(endpoint, icon, label, match=None, badge=None) -%}
+  {% set ep = request.endpoint or '' %}<a href="{{ url_for(endpoint) }}" class="{{ 'active' if (match and ep.startswith(match)) or ep == endpoint }}">
+    <i data-lucide="{{ icon }}"></i><span>{{ label }}</span>{% if badge %}<span class="badge danger">{{ badge }}</span>{% endif %}
+  </a>
+{%- endmacro %}
+<div class="app">
+  <aside class="sidebar">
+    <div class="sidebar-brand">
+      <img src="{{ url_for('static', filename='img/icon.png') }}" alt="">
+      <div><div class="brand-name">ÉXTASIS</div><div class="brand-sub">INDUMENTARIA</div></div>
+    </div>
+    <nav class="nav">
+      {# Menú simple: stock, ventas y ganancias. Los demás módulos siguen existiendo pero no se muestran. #}
+      {{ nav('dashboard.index', 'layout-dashboard', 'Inicio') }}
+      {% if tiene_permiso('ventas.crear') %}{{ nav('ventas.pos', 'scan-barcode', 'Vender', 'ventas.pos') }}{% endif %}
+      {% if tiene_permiso('caja.operar') %}{{ nav('cajas.index', 'wallet', 'Caja', 'cajas.') }}{% endif %}
+      {% if tiene_permiso('ventas.ver') %}{{ nav('ventas.index', 'receipt', 'Ventas', 'ventas.index') }}{% endif %}
+      {% if tiene_permiso('productos.ver') %}{{ nav('productos.index', 'shirt', 'Productos', 'productos.index') }}{% endif %}
+      {% if tiene_permiso('devoluciones.crear') %}{{ nav('devoluciones.index', 'repeat', 'Cambios y devoluciones', 'devoluciones.') }}{% endif %}
+      {% if es_admin() %}
+        <div class="nav-group"><div class="nav-title">Mercadería</div>
+          {{ nav('panel.deposito', 'warehouse', 'Depósito', 'panel.deposito') }}
+          {{ nav('panel.locales', 'store', 'Locales', 'panel.local') }}
+          {{ nav('stock.index', 'boxes', 'Stock (todas las ubicaciones)', 'stock.index') }}
+          {{ nav('productos.carga', 'list-plus', 'Cargar productos nuevos', 'productos.carga') }}
+          {{ nav('productos.etiquetas_masivas', 'barcode', 'Etiquetas con código', 'productos.etiquetas') }}
+          {{ nav('stock.ajuste', 'package-plus', 'Cargar mercadería', 'stock.ajuste') }}
+          {{ nav('transferencias.nueva', 'truck', 'Enviar a un local', 'transferencias.') }}
+          {{ nav('stock.movimientos', 'history', 'Historial de movimientos', 'stock.movimientos') }}
+        </div>
+        <div class="nav-group"><div class="nav-title">Resultados</div>
+          {{ nav('reportes.ganancias', 'trending-up', 'Ventas y ganancias', 'reportes.') }}
+          {{ nav('gastos.index', 'receipt-text', 'Gastos', 'gastos.') }}
+        </div>
+        <div class="nav-group"><div class="nav-title">Ajustes</div>
+          {{ nav('usuarios.index', 'user-cog', 'Usuarios', 'usuarios.') }}
+          {{ nav('configuracion.index', 'settings', 'Configuración', 'configuracion.') }}
+        </div>
+      {% else %}
+        {{ nav('stock.index', 'boxes', 'Stock', 'stock.index') }}
+      {% endif %}
+    </nav>
+    <div class="sidebar-user">
+      <div><b>{{ g.user.nombre }}</b></div>
+      <div class="muted">{{ g.user.rol_nombre }}{% if g.user.ubicacion_nombre %} · {{ g.user.ubicacion_nombre }}{% endif %}</div>
+      <form method="post" action="{{ url_for('auth.logout') }}" class="flex">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <a class="btn btn-sm" href="{{ url_for('auth.cambiar_password') }}"><i data-lucide="key-round"></i>Clave</a>
+        <button class="btn btn-sm" type="submit"><i data-lucide="log-out"></i>Salir</button>
+      </form>
+    </div>
+  </aside>
+  <div class="backdrop"></div>
+
+  <div class="main">
+    <header class="topbar">
+      <button class="icon-btn menu-btn" type="button" aria-label="Menú"><i data-lucide="menu"></i></button>
+      <div class="titulo">{% block topbar %}{{ self.title() }}{% endblock %}
+        {% if g.user.ubicacion_nombre %}<div class="ubic">{{ g.user.ubicacion_nombre }}</div>{% endif %}</div>
+      {% if tiene_permiso('ventas.crear') %}<a class="icon-btn pos-top" href="{{ url_for('ventas.pos') }}" title="Vender"><i data-lucide="scan-barcode"></i></a>{% endif %}
+    </header>
+    <main class="content">
+      {% with msgs = get_flashed_messages(with_categories=true) %}
+        {% for cat, msg in msgs %}<div class="flash {{ cat if cat != 'message' else 'info' }}"><span>{{ msg }}</span><button class="x" type="button">&times;</button></div>{% endfor %}
+      {% endwith %}
+      {% block content %}{% endblock %}
+    </main>
+  </div>
+
+  <nav class="bottombar">
+    <a href="{{ url_for('dashboard.index') }}" class="{{ 'active' if ep == 'dashboard.index' }}"><i data-lucide="home"></i>Inicio</a>
+    <a href="{{ url_for('stock.index') }}" class="{{ 'active' if ep.startswith('stock.') }}"><i data-lucide="boxes"></i>Stock</a>
+    {% if tiene_permiso('ventas.crear') %}<a href="{{ url_for('ventas.pos') }}" class="pos"><i data-lucide="scan-barcode"></i>Vender</a>{% endif %}
+    {% if tiene_permiso('caja.operar') %}<a href="{{ url_for('cajas.index') }}" class="{{ 'active' if ep.startswith('cajas.') }}"><i data-lucide="wallet"></i>Caja</a>{% endif %}
+    <a href="#" class="menu-btn"><i data-lucide="menu"></i>Menú</a>
+  </nav>
+</div>
+
+<div class="modal" id="modal-scanner">
+  <div class="modal-box">
+    <div class="modal-head"><h3>Escanear código</h3><button class="icon-btn" type="button" onclick="Escaner.cerrar()"><i data-lucide="x"></i></button></div>
+    <div id="scanner-region"></div>
+    <p class="muted mb-0" style="font-size:.85rem;margin-top:.6rem">Apuntá la cámara al código de barras de la etiqueta.</p>
+  </div>
+</div>
+{% else %}
+  {% block public %}{% endblock %}
+{% endif %}
+
+<script src="{{ url_for('static', filename='vendor/lucide.min.js') }}"></script>
+<script src="{{ url_for('static', filename='js/app.js') }}?v=2"></script>
+{% block scripts %}{% endblock %}
+</body>
+</html>

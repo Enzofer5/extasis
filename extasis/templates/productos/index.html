@@ -1,0 +1,38 @@
+{% extends "base.html" %}
+{% from "_macros.html" import paginacion, vacio, aplicar_filtros, opciones, estado_badge, filtro_btns %}
+{% block title %}Productos{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div><h1>Productos</h1><div class="sub">Catálogo con talles, colores y códigos de barras</div></div>
+  {% if es_admin() %}<div class="actions"><a class="btn" href="{{ url_for('productos.etiquetas_masivas') }}"><i data-lucide="barcode"></i>Etiquetas</a><a class="btn btn-primary" href="{{ url_for('productos.carga') }}"><i data-lucide="plus"></i>Cargar productos</a></div>{% endif %}
+</div>
+<form class="filters" method="get">
+  <div class="row">
+    <div class="field wide"><label>Buscar (nombre, código interno o código de barras)</label>
+      <div class="input-group"><input type="search" name="q" value="{{ request.args.q or '' }}" placeholder="Ej: jean, EXT-00012, 2000000000012" id="q-prod">
+      <button class="btn" type="button" onclick="Escaner.abrir(c=>{document.getElementById('q-prod').value=c;document.getElementById('q-prod').form.submit()})" title="Escanear"><i data-lucide="camera"></i></button></div></div>
+    <div class="field"><label>Categoría</label><select name="categoria_id">{{ opciones(categorias, request.args.categoria_id, 'Todas') }}</select></div>
+    <div class="field"><label>Marca</label><select name="marca_id">{{ opciones(marcas, request.args.marca_id, 'Todas') }}</select></div>
+    <div class="field"><label>Talle</label><select name="talle_id">{{ opciones(talles, request.args.talle_id) }}</select></div>
+    <div class="field"><label>Color</label><select name="color_id">{{ opciones(colores, request.args.color_id) }}</select></div>
+    <div class="field"><label>Género</label><select name="genero"><option value="">Todos</option>{% for gn in generos %}<option {{ 'selected' if request.args.genero == gn }}>{{ gn }}</option>{% endfor %}</select></div>
+    {% if es_admin() %}<div class="field"><label>Estado</label><select name="estado"><option value="">Todos</option>
+      <option value="1" {{ 'selected' if request.args.estado == '1' }}>Activos</option><option value="0" {{ 'selected' if request.args.estado == '0' }}>Inactivos</option></select></div>{% endif %}
+    {{ filtro_btns('productos.index') }}
+  </div>
+</form>
+{% if not buscado %}{{ aplicar_filtros() }}
+{% elif rows %}
+<div class="table-wrap"><table class="cards">
+  <thead><tr><th>Código</th><th>Producto</th><th>Marca</th><th>Categoría</th><th class="num">Precio</th><th class="num">Var.</th><th class="num">Stock</th><th>Estado</th></tr></thead>
+  <tbody>{% for p in rows %}
+  <tr data-href="{{ url_for('productos.detalle', producto_id=p.id) }}">
+    <td class="mono">{{ p.codigo_interno }}</td><td class="cell-main">{{ p.nombre }}</td><td>{{ p.marca or '—' }}</td><td>{{ p.categoria or '—' }}</td>
+    <td class="num">{{ p.precio_venta|money }}</td><td class="num">{{ p.n_variantes }}</td>
+    <td class="num"><span class="badge {{ 'danger' if p.stock <= 0 else '' }}">{{ p.stock }}</span></td><td>{{ estado_badge(p.activo) }}</td>
+  </tr>{% endfor %}</tbody>
+</table></div>
+{{ paginacion(pag) }}
+{% else %}<div class="card">{{ vacio('No se encontraron productos con esos filtros.') }}</div>{% endif %}
+{% endblock %}
+{% block scripts %}<script src="{{ url_for('static', filename='vendor/html5-qrcode.min.js') }}"></script>{% endblock %}

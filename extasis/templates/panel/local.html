@@ -1,0 +1,133 @@
+{% extends "base.html" %}
+{% from "_macros.html" import paginacion, vacio, periodo_filtro, venta_estado %}
+{% block title %}{{ loc.nombre.replace('Éxtasis — ', '') }}{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div><h1>{{ loc.nombre.replace('Éxtasis — ', '') }}</h1><div class="sub">Sólo este local · {{ desde|fecha_corta }} al {{ hasta|fecha_corta }}</div></div>
+  <div class="actions">
+    <form method="get" class="flex">
+      <select onchange="location.href=this.value" aria-label="Cambiar de local" style="min-width:200px">
+        {% for l in locales %}<option value="{{ url_for('panel.local', lid=l.id, **request.args) }}" {{ 'selected' if l.id == loc.id }}>{{ l.nombre.replace('Éxtasis — ', '') }}</option>{% endfor %}
+      </select>
+    </form>
+    <a class="btn" href="{{ url_for('panel.locales') }}"><i data-lucide="columns-3"></i>Comparar</a>
+    <a class="btn btn-primary" href="{{ url_for('transferencias.nueva') }}"><i data-lucide="truck"></i>Enviarle mercadería</a>
+  </div>
+</div>
+{{ periodo_filtro(periodos, clave, desde, hasta) }}
+
+{% if sin_costo.renglones %}
+<div class="flash warning"><span>Hay {{ sin_costo.unidades }} prendas vendidas sin costo registrado en este período: la ganancia de esas ventas no se puede calcular bien. Cargá el precio de compra en esos productos.</span></div>
+{% endif %}
+
+{# ---------- Resultados del período ---------- #}
+<div class="kpis">
+  <div class="kpi accent"><div class="lbl"><i data-lucide="receipt"></i>Ventas (netas)</div><div class="val">{{ res.ventas|money }}</div>
+    <div class="foot">{{ res.operaciones }} ventas · {{ res.unidades }} prendas</div></div>
+  <div class="kpi"><div class="lbl"><i data-lucide="package"></i>Costo de lo vendido</div><div class="val">{{ res.costo|money }}</div>
+    <div class="foot">Cantidad × costo de cada prenda</div></div>
+  <div class="kpi {{ 'success' if res.bruta >= 0 else 'danger' }}"><div class="lbl"><i data-lucide="trending-up"></i>Ganancia bruta</div><div class="val">{{ res.bruta|money }}</div>
+    <div class="foot">{{ '%.1f'|format(res.bruta / res.ventas * 100) if res.ventas else 0 }}% de lo vendido</div></div>
+  <div class="kpi"><div class="lbl"><i data-lucide="wallet"></i>Caja</div><div class="val">{{ caja_resumen.esperado|money if caja_resumen else 'Cerrada' }}</div>
+    <div class="foot">{% if caja %}<a href="{{ url_for('cajas.local', ub_id=loc.id) }}">Efectivo en caja · ver detalle</a>{% else %}Sin caja abierta{% endif %}</div></div>
+</div>
+{% if res.gastos or res.sueldos %}
+<div class="card" style="margin-bottom:1rem">
+  <dl class="dl">
+    <dt>Ganancia bruta</dt><dd>{{ res.bruta|money }}</dd>
+    <dt>− Gastos cargados a este local</dt><dd>{{ res.gastos|money }}</dd>
+    <dt>− Sueldos de empleados de este local</dt><dd>{{ res.sueldos|money }}</dd>
+    <dt><b>Ganancia neta del local</b></dt><dd><b class="{{ 'diff-pos' if res.neta >= 0 else 'diff-neg' }}">{{ res.neta|money }}</b></dd>
+  </dl>
+  <p class="muted mb-0" style="font-size:.82rem;margin-top:.5rem">Sólo incluye los gastos y sueldos registrados en el sistema para este local.</p>
+</div>
+{% endif %}
+
+<div class="grid grid-2" style="align-items:start;margin-bottom:1rem">
+  <div class="card">
+    <div class="card-head"><h3>Ingresos por forma de pago</h3></div>
+    <div class="table-wrap"><table><tbody>
+      {% for m in por_metodo %}<tr><td>{{ m.etiqueta }}</td><td class="num">{{ m.operaciones }} ventas</td><td class="num"><b>{{ m.total|money }}</b></td></tr>
+      {% else %}<tr><td class="muted">Sin ventas en el período.</td></tr>{% endfor %}
+    </tbody></table></div>
+  </div>
+  <div class="card">
+    <div class="card-head"><h3>Más vendidos</h3></div>
+    <div class="table-wrap"><table><thead><tr><th>Producto</th><th class="num">Prendas</th><th class="num">Vendido</th><th class="num">Ganancia</th></tr></thead><tbody>
+      {% for t in top %}<tr><td class="cell-main">{{ t.etiqueta }}</td><td class="num">{{ t.unidades }}</td><td class="num">{{ t.total|money }}</td><td class="num">{{ t.ganancia_bruta|money }}</td></tr>
+      {% else %}<tr><td colspan="4" class="muted">Sin ventas en el período.</td></tr>{% endfor %}
+    </tbody></table></div>
+  </div>
+</div>
+
+{# ---------- Ventas ---------- #}
+<div class="card" style="margin-bottom:1rem">
+  <div class="card-head"><h3><i data-lucide="receipt"></i> Ventas del período</h3>
+    <a class="btn btn-sm" href="{{ url_for('ventas.index', ubicacion_id=loc.id, desde=desde, hasta=hasta) }}">Ver todas</a></div>
+  <div class="table-wrap"><table class="cards">
+    <thead><tr><th>N°</th><th>Fecha</th><th>Vendedor</th><th>Pago</th><th class="num">Prendas</th><th class="num">Total</th><th>Estado</th></tr></thead>
+    <tbody>{% for v in ventas %}<tr data-href="{{ url_for('ventas.detalle', venta_id=v.id) }}">
+      <td class="cell-main">#{{ v.id }}</td><td>{{ v.fecha|fecha }}</td><td>{{ v.vendedor }}</td><td>{{ v.metodo }}</td>
+      <td class="num">{{ v.unidades }}</td><td class="num">{{ v.total|money }}</td><td>{{ venta_estado(v.estado) }}</td></tr>
+    {% else %}<tr><td colspan="7" class="muted">Sin ventas en el período.</td></tr>{% endfor %}</tbody>
+  </table></div>
+</div>
+
+{# ---------- Stock del local ---------- #}
+<div class="kpis">
+  <div class="kpi"><div class="lbl"><i data-lucide="boxes"></i>Stock del local</div><div class="val">{{ stock.unidades }}</div><div class="foot">{{ stock.productos }} productos distintos</div></div>
+  <div class="kpi"><div class="lbl"><i data-lucide="banknote"></i>Valor a costo</div><div class="val">{{ stock.valor_costo|money }}</div></div>
+  <div class="kpi"><div class="lbl"><i data-lucide="tag"></i>Valor a precio de venta</div><div class="val">{{ stock.valor_venta|money }}</div></div>
+  <div class="kpi {{ 'warning' if stock.por_agotarse }}"><div class="lbl"><i data-lucide="trending-down"></i>Por agotarse</div><div class="val">{{ stock.por_agotarse }}</div><div class="foot">{{ stock.agotados }} agotados</div></div>
+</div>
+
+{% if bajo %}
+<div class="card" style="margin-bottom:1rem">
+  <div class="card-head"><h3><i data-lucide="trending-down"></i> Para reponer</h3>
+    <a class="btn btn-sm btn-primary" href="{{ url_for('transferencias.nueva') }}"><i data-lucide="truck"></i>Enviar desde el depósito</a></div>
+  <div class="table-wrap"><table class="cards">
+    <thead><tr><th>Producto</th><th>Talle</th><th>Color</th><th class="num">Quedan en el local</th><th class="num">Mínimo</th><th class="num">Hay en depósito</th></tr></thead>
+    <tbody>{% for b in bajo %}<tr><td class="cell-main">{{ b.producto }}</td><td>{{ b.talle }}</td><td>{{ b.color }}</td>
+      <td class="num"><span class="badge {{ 'danger' if b.cantidad <= 0 else 'warning' }}">{{ b.cantidad }}</span></td><td class="num">{{ b.stock_minimo }}</td>
+      <td class="num">{% if b.en_deposito > 0 %}<span class="badge success">{{ b.en_deposito }}</span>{% else %}<span class="muted">0</span>{% endif %}</td></tr>{% endfor %}</tbody>
+  </table></div>
+</div>
+{% endif %}
+
+<div class="card" style="margin-bottom:1rem">
+  <div class="card-head"><h3><i data-lucide="store"></i> Productos en este local</h3>
+    <a class="btn btn-sm" href="{{ url_for('panel.local', lid=loc.id, csv=1, q=request.args.q, estado=request.args.estado, todos=request.args.todos) }}"><i data-lucide="download"></i>Excel (CSV)</a></div>
+  <form class="filters" method="get"><div class="row">
+    {% for k in ('periodo', 'desde', 'hasta') if request.args.get(k) %}<input type="hidden" name="{{ k }}" value="{{ request.args.get(k) }}">{% endfor %}
+    <div class="field wide"><label>Producto o código</label><input type="search" name="q" value="{{ request.args.q or '' }}"></div>
+    <div class="field"><label>Mostrar</label><select name="estado"><option value="">Todo</option><option value="bajo" {{ 'selected' if request.args.estado == 'bajo' }}>Sólo por agotarse</option></select></div>
+    <div class="field"><label>&nbsp;</label><label class="check"><input type="checkbox" name="todos" value="1" {{ 'checked' if request.args.todos }}> Incluir sin stock</label></div>
+    <div class="btns"><button class="btn btn-primary" type="submit"><i data-lucide="search"></i>Buscar</button></div>
+  </div></form>
+  {% if rows %}
+  <div class="table-wrap"><table class="cards">
+    <thead><tr><th>Producto</th><th>Código</th><th>Talle</th><th>Color</th><th class="num">Cantidad</th><th class="num">Precio venta</th></tr></thead>
+    <tbody>{% for r in rows %}<tr data-href="{{ url_for('productos.detalle', producto_id=r.producto_id) }}">
+      <td class="cell-main">{{ r.producto }}</td><td class="mono">{{ r.codigo_interno or r.codigo_barras or '—' }}</td><td>{{ r.talle }}</td>
+      <td>{% if r.hex %}<i class="swatch" style="background:{{ r.hex }}"></i> {% endif %}{{ r.color }}</td>
+      <td class="num"><span class="badge {{ 'danger' if r.cantidad <= 0 else ('warning' if r.cantidad <= r.stock_minimo else '') }}">{{ r.cantidad }}</span></td>
+      <td class="num">{{ r.precio_venta|money }}</td></tr>{% endfor %}</tbody>
+  </table></div>
+  {{ paginacion(pag) }}
+  {% else %}{{ vacio('No hay productos con esos filtros.') }}{% endif %}
+</div>
+
+{# ---------- Movimientos ---------- #}
+<div class="card">
+  <div class="card-head"><h3><i data-lucide="history"></i> Últimos movimientos de mercadería</h3>
+    <a class="btn btn-sm" href="{{ url_for('stock.movimientos', ubicacion_id=loc.id) }}">Historial completo</a></div>
+  <div class="table-wrap"><table class="cards">
+    <thead><tr><th>Fecha</th><th>Tipo</th><th>Producto</th><th class="num">Cant.</th><th>Desde</th><th>Hacia</th><th>Usuario</th></tr></thead>
+    <tbody>{% for x in movs %}<tr>
+      <td>{{ x.fecha|fecha }}</td><td><span class="badge">{{ x.tipo }}</span></td>
+      <td class="cell-main">{{ x.producto }} · {{ x.talle }} · {{ x.color }}</td><td class="num">{{ x.cantidad }}</td>
+      <td>{{ (x.origen or '—').replace('Éxtasis — ', '') }}</td><td>{{ (x.destino or '—').replace('Éxtasis — ', '') }}</td><td>{{ x.usuario }}</td>
+    </tr>{% else %}<tr><td colspan="7" class="muted">Sin movimientos.</td></tr>{% endfor %}</tbody>
+  </table></div>
+</div>
+{% endblock %}

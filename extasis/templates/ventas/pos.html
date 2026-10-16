@@ -1,0 +1,132 @@
+{% extends "base.html" %}
+{% from "_macros.html" import csrf %}
+{% block title %}Punto de venta{% endblock %}
+{% block topbar %}Punto de venta{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div><h1>Vender</h1><div class="sub">{{ ub.nombre }}{% if caja %} · Caja abierta desde {{ caja.fecha_apertura|fecha }}{% endif %}</div></div>
+  {% if locales %}
+  <form method="get" class="flex"><select name="ubicacion_id" onchange="this.form.submit()" style="min-width:220px">
+    {% for l in locales %}<option value="{{ l.id }}" {{ 'selected' if l.id == ub.id }}>{{ l.nombre }}</option>{% endfor %}</select></form>
+  {% endif %}
+</div>
+
+{% if not caja %}
+<div class="card" style="max-width:520px;margin:2rem auto;text-align:center">
+  <i data-lucide="lock" style="width:42px;height:42px;color:var(--warning)"></i>
+  <h2 class="mt-1">La caja está cerrada</h2>
+  <p class="muted">No se puede realizar una venta sin tener una caja abierta.</p>
+  <form method="post" action="{{ url_for('cajas.abrir') }}" class="text-left" style="text-align:left">
+    {{ csrf() }}<input type="hidden" name="ubicacion_id" value="{{ ub.id }}"><input type="hidden" name="ir_pos" value="1">
+    <div class="field"><label>Monto inicial en efectivo</label><input type="number" name="monto_inicial" step="0.01" min="0" value="0" required inputmode="decimal"></div>
+    <button class="btn btn-primary btn-lg btn-block" type="submit"><i data-lucide="unlock"></i>ABRIR CAJA</button>
+  </form>
+</div>
+{% else %}
+<div class="pos">
+  <div class="stack">
+    <div class="card">
+      <label for="scan">Escaneá con el lector o buscá por nombre / código</label>
+      <div class="scan-box picker-results">
+        <input type="search" id="scan" placeholder="Código de barras o nombre…" autocomplete="off" autofocus enterkeyhint="search">
+        <button class="btn" type="button" id="btn-cam" title="Escanear con cámara"><i data-lucide="camera"></i><span class="hide-sm">Cámara</span></button>
+      </div>
+      <div class="results" id="res"></div>
+    </div>
+
+    <div class="card">
+      <div class="card-head"><h3><i data-lucide="shopping-bag"></i> Carrito <span class="badge" id="n-items">0</span></h3>
+        <button class="btn btn-sm btn-ghost" type="button" id="btn-vaciar"><i data-lucide="trash-2"></i>Vaciar</button></div>
+      <div class="table-wrap hide-sm" id="cart-table-wrap" style="border:0">
+        <table><thead><tr><th>Producto</th><th>Talle</th><th class="center">Cantidad</th><th class="num">Precio</th><th class="num">Subtotal</th><th></th></tr></thead>
+        <tbody id="cart-rows"></tbody></table>
+      </div>
+      <div id="cart-list" class="show-sm"></div>
+      <div id="cart-empty" class="empty"><i data-lucide="scan-barcode"></i><div>Escaneá un producto para empezar</div></div>
+    </div>
+  </div>
+
+  <div class="pos-side card">
+    {# Clientes ocultos en el modo simple (el código JS sigue esperando estos elementos) #}
+    <div class="field" style="display:none">
+      <label>Cliente</label>
+      <div id="cli-sel" class="flex between" style="display:none"><span class="badge accent" id="cli-nombre"></span>
+        <button class="btn btn-sm btn-ghost" type="button" id="cli-quitar">Quitar</button></div>
+      <div id="cli-buscar" class="picker-results">
+        <div class="input-group"><input type="search" id="cli-q" placeholder="Nombre o DNI (opcional)" autocomplete="off">
+          <button class="btn" type="button" data-modal="m-cli" title="Nuevo cliente"><i data-lucide="user-plus"></i></button></div>
+        <div class="results" id="cli-res"></div>
+      </div>
+    </div>
+
+    <div class="field">
+      <label>Descuento</label>
+      <div class="input-group">
+        <select id="desc-tipo" style="max-width:90px"><option value="porc">%</option><option value="monto">$</option></select>
+        <input type="number" id="desc-valor" min="0" step="0.01" value="0" inputmode="decimal">
+      </div>
+    </div>
+
+    <label>Método de pago</label>
+    <div class="pay-methods mb-1">
+      {% for m in metodos %}<label><input type="radio" name="metodo" value="{{ m.id }}" data-codigo="{{ m.codigo }}" {{ 'checked' if loop.first }}><span>{{ m.nombre }}</span></label>{% endfor %}
+    </div>
+    <div id="plan-box" class="plan-box" style="display:none">
+      <label id="plan-titulo">Tarjeta</label>
+      <div class="chips mb-1" id="plan-entidades"></div>
+      <label>Cuotas</label>
+      <div class="plan-cuotas" id="plan-cuotas"></div>
+      <div class="muted" id="plan-vacio" style="display:none;font-size:.85rem">No hay planes cargados. Configuralos en Configuración → Tarjetas y créditos.</div>
+    </div>
+    <div id="vuelto-box" class="field">
+      <label>Paga con (para calcular el vuelto)</label>
+      <input type="number" id="paga-con" min="0" step="0.01" inputmode="decimal" placeholder="Opcional">
+      <div class="muted mt-1" id="vuelto"></div>
+    </div>
+
+    <div class="totals">
+      <div class="line"><span>Subtotal</span><span id="t-sub">$ 0</span></div>
+      <div class="line"><span>Descuento</span><span id="t-desc">$ 0</span></div>
+      <div class="line" id="l-rec" style="display:none"><span id="t-rec-lbl">Interés</span><span id="t-rec">$ 0</span></div>
+      <div class="total"><span>TOTAL</span><span id="t-total">$ 0</span></div>
+    </div>
+    <div class="field mt-1"><input type="text" id="obs" placeholder="Observaciones (opcional)" maxlength="255"></div>
+    <button class="btn btn-success btn-lg btn-block" type="button" id="btn-cobrar"><i data-lucide="check-circle"></i>FINALIZAR VENTA</button>
+  </div>
+</div>
+
+<div class="modal" id="m-cli"><div class="modal-box">
+  <div class="modal-head"><h3>Nuevo cliente</h3><button class="icon-btn" data-close type="button"><i data-lucide="x"></i></button></div>
+  <form id="f-cli" data-multi>
+    <div class="form-grid">
+      <div class="field"><label>Nombre *</label><input type="text" name="nombre" required></div>
+      <div class="field"><label>Apellido *</label><input type="text" name="apellido" required></div>
+      <div class="field"><label>DNI</label><input type="text" name="dni" inputmode="numeric"></div>
+      <div class="field"><label>WhatsApp</label><input type="tel" name="whatsapp"></div>
+    </div>
+    <button class="btn btn-primary btn-block" type="submit">Guardar y seleccionar</button>
+  </form>
+</div></div>
+
+<div class="modal" id="m-ok"><div class="modal-box" style="text-align:center">
+  <i data-lucide="check-circle-2" style="width:56px;height:56px;color:var(--success)"></i>
+  <h2 class="mt-1">¡Venta registrada!</h2>
+  <p>Venta <b id="ok-num"></b> · Total <b id="ok-total"></b></p>
+  <p class="muted" id="ok-vuelto"></p>
+  <div class="grid grid-2">
+    <a class="btn btn-lg" id="ok-ticket" href="#" target="_blank"><i data-lucide="printer"></i>Imprimir ticket</a>
+    <button class="btn btn-primary btn-lg" type="button" id="ok-nueva"><i data-lucide="plus"></i>Nueva venta</button>
+  </div>
+</div></div>
+{% endif %}
+{% endblock %}
+
+{% block scripts %}
+{% if caja %}
+<script src="{{ url_for('static', filename='vendor/html5-qrcode.min.js') }}"></script>
+<script>
+window.POS_CFG = { financiacion: {{ financiacion|tojson }}, ubicacion: {{ ub.id }}, sinStock: {{ 'true' if sin_stock else 'false' }}, esAdmin: {{ 'true' if es_admin() else 'false' }} };
+</script>
+<script src="{{ url_for('static', filename='js/pos.js') }}?v=1"></script>
+{% endif %}
+{% endblock %}

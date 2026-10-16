@@ -1,0 +1,25 @@
+{% extends "base.html" %}
+{% from "_macros.html" import paginacion, vacio, aplicar_filtros, opciones, estado_badge, filtro_btns %}
+{% block title %}Clientes{% endblock %}
+{% block content %}
+<div class="page-head"><div><h1>Clientes</h1></div>
+  <div class="actions"><a class="btn" href="{{ url_for('clientes.cuentas') }}"><i data-lucide="credit-card"></i>Cuentas corrientes</a>
+  <a class="btn btn-primary" href="{{ url_for('clientes.form') }}"><i data-lucide="user-plus"></i>Nuevo cliente</a></div></div>
+<form class="filters" method="get"><div class="row">
+  <div class="field wide"><label>Buscar (nombre, apellido, DNI, teléfono)</label><input type="search" name="q" value="{{ request.args.q or '' }}"></div>
+  {% if ubics %}<div class="field"><label>Local</label><select name="ubicacion_id">{{ opciones(ubics, request.args.ubicacion_id) }}</select></div>{% endif %}
+  <div class="field"><label>Estado</label><select name="estado"><option value="">Todos</option><option value="1" {{ 'selected' if request.args.estado=='1' }}>Activos</option><option value="0" {{ 'selected' if request.args.estado=='0' }}>Inactivos</option></select></div>
+  <div class="field"><label>&nbsp;</label><label class="check"><input type="checkbox" name="con_saldo" value="1" {{ 'checked' if request.args.con_saldo }}> Con deuda</label></div>
+  {{ filtro_btns('clientes.index') }}
+</div></form>
+{% if not buscado %}{{ aplicar_filtros() }}
+{% elif rows %}
+<div class="table-wrap"><table class="cards">
+  <thead><tr><th>Cliente</th><th>DNI</th><th>Teléfono</th>{% if es_admin() %}<th>Local</th>{% endif %}<th>Última compra</th><th class="num">Saldo CC</th><th>Estado</th></tr></thead>
+  <tbody>{% for c in rows %}<tr data-href="{{ url_for('clientes.detalle', cid=c.id) }}">
+    <td class="cell-main">{{ c.apellido }}, {{ c.nombre }}</td><td>{{ c.dni or '—' }}</td><td>{{ c.whatsapp or c.telefono or '—' }}</td>{% if es_admin() %}<td>{{ c.ubicacion or '—' }}</td>{% endif %}
+    <td>{{ c.ultima_compra|fecha_corta or '—' }}</td><td class="num">{% if c.saldo > 0 %}<span class="badge warning">{{ c.saldo|money }}</span>{% else %}—{% endif %}</td><td>{{ estado_badge(c.activo) }}</td></tr>{% endfor %}</tbody>
+</table></div>
+{{ paginacion(pag) }}
+{% else %}<div class="card">{{ vacio() }}</div>{% endif %}
+{% endblock %}

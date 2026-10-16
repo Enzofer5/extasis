@@ -1,0 +1,108 @@
+{% extends "base.html" %}
+{% from "_macros.html" import csrf %}
+{% block title %}Cargar productos{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div><h1>Cargar productos</h1>
+    <div class="sub">Cargá varios a la vez. Escribí y elegí de la lista (si algo no existe, se crea solo). Cada producto recibe su código y cada talle/color su código de barras automáticamente.</div></div>
+</div>
+
+<div class="card carga-ayuda">
+  <i data-lucide="lightbulb"></i>
+  <div><b>Tip:</b> para la misma zapatilla en varios colores, cargá una fila y tocá <span class="kbd"><i data-lucide="copy"></i> Duplicar</span>: copia todo y solo cambiás el color.
+    Las filas con el mismo nombre y marca se guardan como <b>un solo producto</b> con todos sus colores y talles.</div>
+</div>
+
+<form method="post" id="f-carga">
+  {{ csrf() }}<input type="hidden" name="filas" id="filas">
+  <div id="filas-box"></div>
+  <div class="flex mt-1">
+    <button class="btn" type="button" id="btn-fila"><i data-lucide="plus"></i>Agregar otro producto</button>
+    <span class="muted" id="resumen"></span>
+  </div>
+  <div class="form-actions">
+    <a class="btn btn-ghost" href="{{ url_for('productos.index') }}">Cancelar</a>
+    <button class="btn btn-primary btn-lg" type="submit"><i data-lucide="save"></i>Guardar todo</button>
+  </div>
+</form>
+
+<datalist id="dl-marcas">{% for m in marcas %}<option value="{{ m.nombre }}">{% endfor %}</datalist>
+<datalist id="dl-categorias">{% for c in categorias %}<option value="{{ c.nombre }}">{% endfor %}</datalist>
+<datalist id="dl-colores">{% for c in colores if c.nombre != 'Único' %}<option value="{{ c.nombre }}">{% endfor %}<option value="Único"></datalist>
+
+<template id="tpl-fila">
+  <div class="fila-prod card">
+    <div class="fila-head"><span class="fila-num"></span>
+      <div class="flex"><button class="btn btn-sm" type="button" data-acc="dup"><i data-lucide="copy"></i>Duplicar</button>
+      <button class="btn btn-sm btn-ghost" type="button" data-acc="del" title="Quitar"><i data-lucide="trash-2"></i></button></div></div>
+    <div class="fila-grid">
+      <div class="field f-nombre"><label>Nombre *</label><input data-f="nombre" type="text" placeholder="Ej: Zapatilla Urbana" required></div>
+      <div class="field"><label>Marca</label><input data-f="marca" type="text" list="dl-marcas" placeholder="Escribí o elegí"></div>
+      <div class="field"><label>Categoría</label><input data-f="categoria" type="text" list="dl-categorias" placeholder="Escribí o elegí"></div>
+      <div class="field"><label>Género</label><select data-f="genero">{% for gn in generos %}<option {{ 'selected' if gn == 'Unisex' }}>{{ gn }}</option>{% endfor %}</select></div>
+      <div class="field"><label>Color</label><input data-f="color" type="text" list="dl-colores" placeholder="Ej: Negro"></div>
+      <div class="field f-talles"><label>Talles <small class="muted">(con coma, o un rango: 38 al 44)</small></label>
+        <div class="input-group"><input data-f="talles" type="text" placeholder="S, M, L  ó  38 al 44">
+          <select class="preset" title="Talles frecuentes"><option value="">Rápido…</option>{% for k, v in presets.items() %}<option value="{{ v }}">{{ k }}</option>{% endfor %}</select></div></div>
+      <div class="field"><label>Precio de compra</label><input data-f="precio_compra" type="number" min="0" step="0.01" inputmode="decimal" placeholder="0"></div>
+      <div class="field"><label>Precio de venta *</label><input data-f="precio_venta" type="number" min="0" step="0.01" inputmode="decimal" required></div>
+      <div class="field"><label>Stock inicial <small class="muted">(por talle)</small></label><input data-f="stock" type="number" min="0" step="1" inputmode="numeric" placeholder="0"></div>
+    </div>
+    <div class="fila-pie muted"></div>
+  </div>
+</template>
+{% endblock %}
+{% block scripts %}
+<script>
+(function () {
+  const box = document.getElementById("filas-box"), tpl = document.getElementById("tpl-fila");
+  const CAMPOS = ["nombre", "marca", "categoria", "genero", "color", "talles", "precio_compra", "precio_venta", "stock"];
+  const DEPOSITO = {{ (deposito.nombre if deposito else 'el depósito')|tojson }};
+  function nueva(datos, despuesDe) {
+    const el = tpl.content.firstElementChild.cloneNode(true);
+    if (datos) CAMPOS.forEach((c) => { const i = el.querySelector(`[data-f="${c}"]`); if (i && datos[c] != null) i.value = datos[c]; });
+    if (despuesDe) despuesDe.after(el); else box.appendChild(el);
+    numerar(); icons(); return el;
+  }
+  function leer(el) { const o = {}; CAMPOS.forEach((c) => o[c] = el.querySelector(`[data-f="${c}"]`).value.trim()); return o; }
+  function talles(t) {
+    t = (t || "").replace(/(\d+)\s*(?:-|al|a)\s*(\d+)/gi, (m, a, b) => { a = +a; b = +b; if (!(a < b && b <= a + 30)) return m; const r = []; for (let n = a; n <= b; n++) r.push(n); return r.join(" "); });
+    const p = [...new Set(t.split(/[,;/\s]+/).filter(Boolean).map(x => x.toLowerCase()))]; return p.length ? p : ["Único"]; }
+  function numerar() {
+    let combos = 0, prendas = 0, prods = new Set();
+    [...box.children].forEach((el, i) => {
+      el.querySelector(".fila-num").textContent = "Producto " + (i + 1);
+      const d = leer(el), n = talles(d.talles).length, st = +d.stock || 0;
+      if (d.nombre) prods.add((d.nombre + "|" + d.marca).toLowerCase());
+      combos += d.nombre ? n : 0; prendas += d.nombre ? n * st : 0;
+      el.querySelector(".fila-pie").textContent = d.nombre
+        ? `${n} talle${n > 1 ? "s" : ""}${d.color ? " en " + d.color : ""} → ${n} código${n > 1 ? "s" : ""} de barras` + (st ? ` · ${n * st} prendas a ${DEPOSITO}` : "")
+        : "";
+    });
+    document.getElementById("resumen").textContent = prods.size ? `${prods.size} producto(s) · ${combos} combinaciones talle/color · ${prendas} prendas` : "";
+  }
+  box.addEventListener("input", numerar);
+  box.addEventListener("change", (e) => {
+    if (e.target.classList.contains("preset") && e.target.value) {
+      e.target.closest(".input-group").querySelector('[data-f="talles"]').value = e.target.value; e.target.value = ""; numerar();
+    }
+  });
+  box.addEventListener("click", (e) => {
+    const b = e.target.closest("[data-acc]"); if (!b) return;
+    const fila = b.closest(".fila-prod");
+    if (b.dataset.acc === "dup") { const d = leer(fila); d.color = ""; const n = nueva(d, fila); n.querySelector('[data-f="color"]').focus(); n.classList.add("nueva"); }
+    if (b.dataset.acc === "del") { if (box.children.length > 1) { fila.remove(); numerar(); } else { CAMPOS.forEach((c) => { const i = fila.querySelector(`[data-f="${c}"]`); if (i.tagName !== "SELECT") i.value = ""; }); numerar(); } }
+  });
+  document.getElementById("btn-fila").addEventListener("click", () => { const n = nueva(); n.classList.add("nueva"); n.querySelector('[data-f="nombre"]').focus(); });
+  document.getElementById("f-carga").addEventListener("submit", (e) => {
+    const filas = [...box.children].map(leer).filter((f) => f.nombre);
+    if (!filas.length) { e.preventDefault(); toast("Cargá al menos un producto", false); return; }
+    const sinPrecio = filas.find((f) => !(+f.precio_venta > 0));
+    if (sinPrecio) { e.preventDefault(); toast(`Falta el precio de venta de "${sinPrecio.nombre}"`, false); return; }
+    document.getElementById("filas").value = JSON.stringify(filas);
+  });
+  const previas = {{ filas_json|safe }};
+  if (previas.length) previas.forEach((f) => nueva(f)); else nueva();
+})();
+</script>
+{% endblock %}

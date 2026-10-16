@@ -1,0 +1,40 @@
+{% extends "base.html" %}
+{% from "_macros.html" import csrf, venta_estado, estado_badge %}
+{% block title %}{{ c.apellido }}, {{ c.nombre }}{% endblock %}
+{% block content %}
+<div class="page-head"><div><h1>{{ c.apellido }}, {{ c.nombre }}</h1><div class="sub">{{ 'DNI ' ~ c.dni if c.dni else '' }} {{ estado_badge(c.activo) }}</div></div>
+  <div class="actions">
+    {% if c.whatsapp %}<a class="btn" target="_blank" rel="noopener" href="https://wa.me/{{ c.whatsapp|replace(' ','')|replace('-','')|replace('+','') }}"><i data-lucide="message-circle"></i>WhatsApp</a>{% endif %}
+    <a class="btn" href="{{ url_for('clientes.form', cid=c.id) }}"><i data-lucide="pencil"></i>Editar</a></div></div>
+<div class="kpis">
+  <div class="kpi"><div class="lbl">Total gastado</div><div class="val">{{ total_gastado|money }}</div></div>
+  <div class="kpi"><div class="lbl">Última compra</div><div class="val" style="font-size:1.1rem">{{ ultima|fecha or '—' }}</div></div>
+  <div class="kpi {{ 'warning' if saldo > 0 else 'success' }}"><div class="lbl">Saldo cuenta corriente</div><div class="val">{{ saldo|money }}</div><div class="foot">{{ 'Límite ' ~ (limite|money) if limite and limite > 0 else 'Sin límite' }}</div></div>
+</div>
+<div class="grid grid-2" style="align-items:start">
+  <div class="card"><dl class="dl">
+    <dt>Teléfono</dt><dd>{{ c.telefono or '—' }}</dd><dt>WhatsApp</dt><dd>{{ c.whatsapp or '—' }}</dd><dt>Email</dt><dd>{{ c.email or '—' }}</dd>
+    <dt>Dirección</dt><dd>{{ c.direccion or '—' }}</dd><dt>Local</dt><dd>{{ c.ubicacion or '—' }}</dd><dt>Registro</dt><dd>{{ c.creado_en|fecha }}</dd></dl></div>
+  {% if tiene_permiso('clientes.cobrar') and saldo > 0 %}
+  <form method="post" action="{{ url_for('clientes.pago', cid=c.id) }}" class="card">{{ csrf() }}
+    <h3>Registrar pago</h3>
+    <div class="form-grid">
+      <div class="field"><label>Monto</label><input type="number" name="monto" step="0.01" min="0.01" value="{{ saldo }}" required inputmode="decimal"></div>
+      <div class="field"><label>Forma de pago</label><select name="metodo_pago_id">{% for m in metodos %}<option value="{{ m.id }}">{{ m.nombre }}</option>{% endfor %}</select></div>
+      {% if es_admin() %}<div class="field full"><label>Ingresa en la caja de</label><select name="ubicacion_id"><option value="">No ingresa a caja (cobro administrativo)</option>
+        {% for l in locales %}<option value="{{ l.id }}">{{ l.nombre }}</option>{% endfor %}</select></div>{% endif %}
+      <div class="field full"><label>Concepto</label><input type="text" name="concepto" placeholder="Pago a cuenta"></div>
+    </div>
+    <div class="form-actions"><button class="btn btn-primary" type="submit"><i data-lucide="check"></i>Registrar pago</button></div>
+  </form>{% endif %}
+</div>
+<h3 class="mt-2">Cuenta corriente</h3>
+<div class="table-wrap"><table class="cards"><thead><tr><th>Fecha</th><th>Concepto</th><th class="num">Debe</th><th class="num">Haber</th><th class="num">Saldo</th></tr></thead><tbody>
+{% for m in movs %}<tr><td>{{ m.fecha|fecha }}</td><td class="cell-main">{{ m.concepto }}{% if m.metodo and m.haber > 0 %} <span class="muted">({{ m.metodo }})</span>{% endif %}</td>
+  <td class="num">{{ m.debe|money if m.debe > 0 else '' }}</td><td class="num">{{ m.haber|money if m.haber > 0 else '' }}</td><td class="num"><b>{{ m.saldo|money }}</b></td></tr>
+{% else %}<tr><td colspan="5" class="muted">Sin movimientos.</td></tr>{% endfor %}</tbody></table></div>
+<h3 class="mt-2">Historial de compras</h3>
+<div class="table-wrap"><table class="cards"><thead><tr><th>N°</th><th>Fecha</th><th>Local</th><th>Pago</th><th class="num">Total</th><th>Estado</th></tr></thead><tbody>
+{% for v in ventas %}<tr data-href="{{ url_for('ventas.detalle', venta_id=v.id) }}"><td class="cell-main">#{{ v.id }}</td><td>{{ v.fecha|fecha }}</td><td>{{ v.ubicacion }}</td><td>{{ v.metodo }}</td><td class="num">{{ v.total|money }}</td><td>{{ venta_estado(v.estado) }}</td></tr>
+{% else %}<tr><td colspan="6" class="muted">Sin compras.</td></tr>{% endfor %}</tbody></table></div>
+{% endblock %}

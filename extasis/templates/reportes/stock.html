@@ -1,0 +1,36 @@
+{% extends "base.html" %}
+{% from "_macros.html" import rango %}
+{% block title %}Reporte de stock{% endblock %}
+{% block content %}
+<div class="page-head"><div><h1>Stock</h1><div class="sub">Existencias valorizadas y rotación</div></div></div>
+{% include "reportes/_tabs.html" %}
+<div class="table-wrap"><table class="cards"><thead><tr><th>Ubicación</th><th class="num">Unidades</th><th class="num">Valor a costo</th><th class="num">Valor a venta</th></tr></thead><tbody>
+{% for r in por_ub %}<tr><td class="cell-main">{{ r.etiqueta }}</td><td class="num">{{ r.unidades }}</td><td class="num">{{ r.valor_costo|money }}</td><td class="num">{{ r.valor_venta|money }}</td></tr>{% endfor %}</tbody>
+<tfoot><tr><td>Total</td><td class="num">{{ por_ub|sum(attribute='unidades') }}</td><td class="num">{{ por_ub|sum(attribute='valor_costo')|money }}</td><td class="num">{{ por_ub|sum(attribute='valor_venta')|money }}</td></tr></tfoot></table></div>
+<div class="kpis mt-2">
+  <div class="kpi warning"><div class="lbl">Variantes con bajo stock</div><div class="val">{{ bajo }}</div><div class="foot"><a href="{{ url_for('stock.bajo_stock') }}">Ver</a></div></div>
+  <div class="kpi danger"><div class="lbl">Productos sin stock</div><div class="val">{{ sin_stock|length }}</div></div>
+  <div class="kpi"><div class="lbl">Mercadería antigua (+{{ dias_ant }} días)</div><div class="val">{{ antiguos|length }}</div></div>
+</div>
+<div class="grid grid-2" style="align-items:start">
+  <div class="card"><div class="card-head"><h3>Más vendidos</h3>
+    <form method="get" class="flex"><input type="date" name="desde" value="{{ desde }}" style="max-width:160px"><input type="date" name="hasta" value="{{ hasta }}" style="max-width:160px"><button class="btn btn-sm">Ver</button></form></div>
+    <div class="chart-box" style="height:340px"><canvas id="ch-top"></canvas></div></div>
+  <div class="card"><div class="card-head"><h3>Stock por categoría</h3></div><div class="chart-box" style="height:340px"><canvas id="ch-cat"></canvas></div></div>
+</div>
+<div class="grid grid-2 mt-2" style="align-items:start">
+  <div><h3>Sin stock</h3><div class="table-wrap"><table class="cards"><thead><tr><th>Código</th><th>Producto</th></tr></thead><tbody>
+  {% for p in sin_stock %}<tr data-href="{{ url_for('productos.detalle', producto_id=p.id) }}"><td class="mono">{{ p.codigo_interno }}</td><td class="cell-main">{{ p.nombre }}</td></tr>{% else %}<tr><td colspan="2" class="muted">Ninguno</td></tr>{% endfor %}</tbody></table></div></div>
+  <div><h3>Mercadería con mucha antigüedad</h3><div class="table-wrap"><table class="cards"><thead><tr><th>Producto</th><th>Alta</th><th>Última venta</th><th class="num">Unid.</th></tr></thead><tbody>
+  {% for p in antiguos %}<tr data-href="{{ url_for('productos.detalle', producto_id=p.id) }}"><td class="cell-main">{{ p.nombre }}</td><td>{{ p.creado_en|fecha_corta }}</td><td>{{ p.ultima_venta|fecha_corta or 'Nunca' }}</td><td class="num">{{ p.unidades }}</td></tr>{% else %}<tr><td colspan="4" class="muted">Ninguno</td></tr>{% endfor %}</tbody></table></div></div>
+</div>
+{% endblock %}
+{% block scripts %}
+<script src="{{ url_for('static', filename='vendor/chart.umd.min.js') }}"></script>
+<script src="{{ url_for('static', filename='js/charts.js') }}?v=1"></script>
+<script>
+Charts.base();
+Charts.barras('ch-top', {{ top|map(attribute='etiqueta')|list|tojson }}, {{ top|map(attribute='unidades')|map('int')|list|tojson }}, {horizontal:true, unidades:true, color:'#6f93b3'});
+Charts.dona('ch-cat', {{ por_cat|map(attribute='etiqueta')|list|tojson }}, {{ por_cat|map(attribute='unidades')|map('int')|list|tojson }}, true);
+</script>
+{% endblock %}

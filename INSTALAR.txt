@@ -1,0 +1,29 @@
+ÉXTASIS — Cómo instalarlo en otra computadora
+==============================================
+
+Necesitás: Windows, Python 3.12 o superior, y MySQL Server 8 (con su usuario root).
+
+1) Descomprimí el zip. Queda la carpeta "Extasis".
+
+2) Archivo de configuración
+   Copiá ".env.example" y renombrá la copia como "config.env".
+   Abrilo con el Bloc de notas y completá:
+     - DB_PASSWORD = la contraseña que figura en database\crear_usuario_app.sql
+     - SECRET_KEY  = cualquier texto largo inventado (por ejemplo 40 letras y números al azar)
+
+3) Crear el usuario de MySQL (una sola vez). En PowerShell, dentro de la carpeta Extasis:
+     & "C:\Program Files\MySQL\MySQL Server 8.0\bin\mysql.exe" -u root -p -e "source database/crear_usuario_app.sql"
+   (Te pide la contraseña de root de MySQL. Si tu versión es otra, cambiá "8.0" por la tuya.)
+
+4) Primer arranque (instala lo necesario y crea la base vacía):
+     python app.py
+   Cuando diga que el servidor está en http://localhost:5000, cerralo con Ctrl+C.
+
+5) Importar los datos del negocio (productos, stock, ventas, usuarios):
+     .venv\Scripts\python.exe database\importar_dump.py database\extasis_datos.sql
+
+6) Arrancar el sistema:
+     python app.py
+   y entrar en http://localhost:5000
+
+Usuarios: los mismos que en la computadora de origen (admin, concepcion, local2).

@@ -1,0 +1,44 @@
+{% extends "base.html" %}
+{% from "_macros.html" import venta_estado %}
+{% block title %}Inicio{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div><h1>{{ g.user.ubicacion_nombre }}</h1><div class="sub">Hola, {{ g.user.nombre }}</div></div>
+  <div class="actions">
+    {% if caja %}<a class="btn btn-primary btn-lg" href="{{ url_for('ventas.pos') }}"><i data-lucide="scan-barcode"></i>Vender</a>
+    {% else %}<a class="btn btn-primary btn-lg" href="{{ url_for('cajas.index') }}"><i data-lucide="unlock"></i>ABRIR CAJA</a>{% endif %}
+  </div>
+</div>
+
+{% if not caja %}
+<div class="flash warning"><i data-lucide="lock"></i><span>La caja está cerrada. Para vender primero tenés que <a href="{{ url_for('cajas.index') }}">abrir la caja</a>.</span></div>
+{% endif %}
+
+<div class="kpis">
+  <div class="kpi accent"><div class="lbl"><i data-lucide="zap"></i>Vendido hoy</div><div class="val">{{ hoy.ventas|money }}</div><div class="foot">{{ hoy.operaciones }} ventas</div></div>
+  <div class="kpi"><div class="lbl"><i data-lucide="calendar"></i>Vendido este mes</div><div class="val">{{ mes.ventas|money }}</div><div class="foot">{{ mes.unidades }} prendas</div></div>
+  <div class="kpi {{ 'success' if caja }}"><div class="lbl"><i data-lucide="wallet"></i>Caja</div>
+    <div class="val">{{ resumen.esperado|money if resumen else 'Cerrada' }}</div>
+    <div class="foot">{% if caja %}Efectivo en caja · abierta {{ caja.fecha_apertura|fecha }}{% else %}Sin abrir{% endif %}</div></div>
+  <div class="kpi"><div class="lbl"><i data-lucide="boxes"></i>Stock del local</div><div class="val">{{ stock_local }}</div><div class="foot"><a href="{{ url_for('stock.index') }}">Ver stock</a></div></div>
+</div>
+
+<div class="grid grid-2">
+  <div class="card">
+    <div class="card-head"><h3>Últimas ventas</h3><a class="btn btn-sm" href="{{ url_for('ventas.index') }}">Ver todas</a></div>
+    <div class="table-wrap"><table class="cards"><thead><tr><th>N°</th><th>Fecha</th><th>Pago</th><th class="num">Total</th><th>Estado</th></tr></thead><tbody>
+    {% for v in ultimas %}<tr data-href="{{ url_for('ventas.detalle', venta_id=v.id) }}"><td class="cell-main">#{{ v.id }}</td><td>{{ v.fecha|fecha }}</td><td>{{ v.metodo }}</td><td class="num">{{ v.total|money }}</td><td>{{ venta_estado(v.estado) }}</td></tr>
+    {% else %}<tr><td colspan="5" class="muted">Todavía no hay ventas.</td></tr>{% endfor %}
+    </tbody></table></div>
+  </div>
+  <div class="card">
+    <div class="card-head"><h3>Por agotarse en este local</h3></div>
+    {% if bajo %}
+    <div class="table-wrap"><table class="cards"><thead><tr><th>Producto</th><th>Talle</th><th>Color</th><th class="num">Quedan</th></tr></thead><tbody>
+    {% for b in bajo %}<tr><td class="cell-main">{{ b.producto }}</td><td>{{ b.talle }}</td><td>{{ b.color }}</td>
+      <td class="num"><span class="badge {{ 'danger' if b.cantidad <= 0 else 'warning' }}">{{ b.cantidad }}</span></td></tr>{% endfor %}
+    </tbody></table></div>
+    {% else %}<p class="muted">Todo en orden.</p>{% endif %}
+  </div>
+</div>
+{% endblock %}

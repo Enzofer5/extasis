@@ -1,0 +1,15 @@
+{% extends "base.html" %}
+{% from "_macros.html" import paginacion %}
+{% block title %}Inventarios{% endblock %}
+{% block content %}
+<div class="page-head"><div><h1>Inventarios físicos</h1><div class="sub">Conteo real vs. sistema. El administrador autoriza los ajustes.</div></div>
+  <div class="actions"><a class="btn btn-primary" href="{{ url_for('inventarios.nuevo') }}"><i data-lucide="clipboard-plus"></i>Nuevo inventario</a></div></div>
+<div class="table-wrap"><table class="cards">
+  <thead><tr><th>N°</th><th>Fecha</th><th>Ubicación</th><th>Cargó</th><th class="num">Artículos</th><th class="num">Diferencia</th><th>Estado</th></tr></thead>
+  <tbody>{% for i in rows %}<tr data-href="{{ url_for('inventarios.detalle', iid=i.id) }}"><td class="cell-main">#{{ i.id }}</td><td>{{ i.fecha|fecha }}</td><td>{{ i.ubicacion }}</td><td>{{ i.usuario }}</td>
+    <td class="num">{{ i.items }}</td><td class="num"><span class="{{ 'diff-neg' if i.diferencia < 0 else ('diff-pos' if i.diferencia > 0 else '') }}">{{ '%+d'|format(i.diferencia|int) }}</span></td>
+    <td><span class="badge {{ {'Pendiente':'warning','Aprobado':'success','Rechazado':'danger'}[i.estado] }}">{{ i.estado }}</span></td></tr>
+  {% else %}<tr><td colspan="7" class="muted">No hay inventarios.</td></tr>{% endfor %}</tbody>
+</table></div>
+{{ paginacion(pag) }}
+{% endblock %}

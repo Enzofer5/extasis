@@ -1,0 +1,25 @@
+{% extends "base.html" %}
+{% from "_macros.html" import csrf %}
+{% block title %}Cierre de caja{% endblock %}
+{% block content %}
+<div class="page-head"><div><h1>CIERRE DE CAJA</h1><div class="sub">{{ res.caja.ubicacion }} · abierta {{ res.caja.fecha_apertura|fecha }}</div></div></div>
+<div class="grid grid-2" style="align-items:start">
+  <div>{% include "cajas/_resumen.html" %}</div>
+  <form method="post" class="card" id="f-cierre">{{ csrf() }}
+    <h3>Contá el efectivo</h3>
+    <div class="field"><label>EFECTIVO REAL contado *</label><input type="number" name="efectivo_real" id="real" step="0.01" min="0" required inputmode="decimal" style="font-size:1.4rem;min-height:56px" autofocus></div>
+    <div class="totals">
+      <div class="line"><span>Esperado</span><span>{{ res.esperado|money }}</span></div>
+      <div class="total"><span>DIFERENCIA</span><span id="dif">—</span></div>
+    </div>
+    <div class="field mt-1"><label>Observaciones</label><input type="text" name="observaciones" maxlength="200" placeholder="Explicá la diferencia si la hay"></div>
+    <button class="btn btn-danger btn-lg btn-block" type="submit"><i data-lucide="lock"></i>Cerrar caja</button>
+  </form>
+</div>
+<script>
+(function(){const esp={{ res.esperado|float }},r=document.getElementById('real'),d=document.getElementById('dif');
+ r.addEventListener('input',()=>{if(r.value===''){d.textContent='—';d.style.color='';return;}const x=parseFloat(r.value)-esp;
+  d.textContent=(x>0?'+':'')+money(x);d.style.color=Math.abs(x)<0.01?'var(--success)':(x<0?'var(--danger)':'var(--warning)');});
+ document.getElementById('f-cierre').addEventListener('submit',e=>{if(!confirm('¿Confirmás el cierre de caja? No se podrá vender hasta abrirla de nuevo.'))e.preventDefault();});})();
+</script>
+{% endblock %}

@@ -1,0 +1,37 @@
+{% extends "base.html" %}
+{% from "_macros.html" import opciones, rango %}
+{% block title %}Reporte de ventas{% endblock %}
+{% block content %}
+<div class="page-head"><div><h1>Reportes</h1><div class="sub">Ventas netas de devoluciones · {{ desde|fecha_corta }} al {{ hasta|fecha_corta }}</div></div>
+  <div class="actions"><a class="btn" href="{{ request.full_path }}{{ '&' if '?' in request.full_path else '?' }}csv=1"><i data-lucide="download"></i>Excel (CSV)</a></div></div>
+{% include "reportes/_tabs.html" %}
+<form class="filters" method="get"><input type="hidden" name="por" value="{{ por }}">
+  {% include "reportes/_periodo.html" %}
+  <div class="row">{{ rango(desde, hasta) }}
+  <div class="field"><label>Local</label><select name="ubicacion_id">{{ opciones(ubics, ub) }}</select></div>
+  <div class="btns"><button class="btn btn-primary" type="submit">Ver</button></div></div></form>
+<div class="kpis">
+  <div class="kpi accent"><div class="lbl">Ventas</div><div class="val">{{ tot.ventas|money }}</div></div>
+  <div class="kpi"><div class="lbl">Operaciones</div><div class="val">{{ tot.operaciones }}</div></div>
+  <div class="kpi"><div class="lbl">Unidades</div><div class="val">{{ tot.unidades }}</div></div>
+  <div class="kpi"><div class="lbl">Ticket promedio</div><div class="val">{{ tot.ticket_promedio|money }}</div></div>
+</div>
+<div class="chips">{% for k, t in agrupaciones %}<a class="chip {{ 'on' if por == k }}" href="{{ url_for('reportes.ventas', por=k, desde=desde, hasta=hasta, ubicacion_id=ub or '') }}">Por {{ t|lower }}</a>{% endfor %}</div>
+<div class="grid grid-2" style="align-items:start">
+  <div class="card"><div class="chart-box" style="height:320px"><canvas id="ch"></canvas></div></div>
+  <div class="table-wrap"><table class="cards">
+    <thead><tr><th>{{ dict(agrupaciones)[por] }}</th><th class="num">Oper.</th><th class="num">Unid.</th><th class="num">Ventas</th><th class="num">Gan. bruta</th></tr></thead>
+    <tbody>{% for f in filas %}<tr><td class="cell-main">{{ f.etiqueta|fecha_corta if por == 'dia' else f.etiqueta }}</td><td class="num">{{ f.operaciones }}</td><td class="num">{{ f.unidades }}</td><td class="num">{{ f.total|money }}</td><td class="num">{{ f.ganancia_bruta|money }}</td></tr>
+    {% else %}<tr><td colspan="5" class="muted">Sin ventas en el período.</td></tr>{% endfor %}</tbody>
+  </table></div>
+</div>
+{% endblock %}
+{% block scripts %}
+<script src="{{ url_for('static', filename='vendor/chart.umd.min.js') }}"></script>
+<script src="{{ url_for('static', filename='js/charts.js') }}?v=1"></script>
+<script>
+Charts.base();
+const L={{ filas|map(attribute='etiqueta')|map('string')|list|tojson }}, V={{ filas|map(attribute='total')|map('float')|list|tojson }};
+{% if por in ('metodo','categoria','temporada','local') %}Charts.dona('ch', L, V);{% else %}Charts.barras('ch', L.slice(0,25), V.slice(0,25), {horizontal: {{ 'true' if por in ('producto','vendedor') else 'false' }}});{% endif %}
+</script>
+{% endblock %}

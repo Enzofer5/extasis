@@ -1,0 +1,21 @@
+{% extends "base.html" %}
+{% from "_macros.html" import paginacion, opciones, rango %}
+{% block title %}Pagos a empleados{% endblock %}
+{% block content %}
+<div class="page-head"><div><h1>Pagos a empleados</h1></div></div>
+<form class="filters" method="get"><div class="row">
+  <div class="field"><label>Empleado</label><select name="empleado_id"><option value="">Todos</option>{% for e in empleados %}<option value="{{ e.id }}" {{ 'selected' if request.args.empleado_id == e.id|string }}>{{ e.apellido }}, {{ e.nombre }}</option>{% endfor %}</select></div>
+  <div class="field"><label>Local</label><select name="ubicacion_id">{{ opciones(ubics, request.args.ubicacion_id) }}</select></div>
+  <div class="field"><label>Período</label><input type="month" name="periodo" value="{{ request.args.periodo or '' }}"></div>
+  {{ rango(desde, hasta) }}<div class="btns"><button class="btn btn-primary" type="submit">Filtrar</button></div></div></form>
+<div class="kpis"><div class="kpi accent"><div class="lbl">Total pagado</div><div class="val">{{ total|money }}</div></div></div>
+<div class="grid grid-3" style="align-items:start">
+  {% for titulo, lista in [('Por empleado', por_empleado), ('Por local', por_local), ('Por período', por_periodo)] %}
+  <div class="card"><h3>{{ titulo }}</h3>{% for r in lista %}<div class="flex between" style="padding:.25rem 0;border-bottom:1px solid var(--border)"><span>{{ r.etiqueta }}</span><b>{{ r.total|money }}</b></div>{% else %}<p class="muted">Sin datos.</p>{% endfor %}</div>
+  {% endfor %}
+</div>
+<div class="table-wrap mt-2"><table class="cards"><thead><tr><th>Fecha</th><th>Empleado</th><th>Local</th><th>Concepto</th><th>Período</th><th>Método</th><th class="num">Monto</th></tr></thead><tbody>
+{% for p in rows %}<tr data-href="{{ url_for('empleados.detalle', eid=p.empleado_id) }}"><td>{{ p.fecha|fecha_corta }}</td><td class="cell-main">{{ p.empleado }}</td><td>{{ p.ubicacion or 'General' }}</td><td>{{ p.concepto }}</td><td>{{ p.periodo }}</td><td>{{ p.metodo }}</td><td class="num">{{ p.monto|money }}</td></tr>
+{% else %}<tr><td colspan="7" class="muted">Sin pagos en el período.</td></tr>{% endfor %}</tbody></table></div>
+{{ paginacion(pag) }}
+{% endblock %}

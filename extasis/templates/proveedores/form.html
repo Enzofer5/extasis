@@ -1,0 +1,21 @@
+{% extends "base.html" %}
+{% from "_macros.html" import csrf %}
+{% block title %}{{ p.razon_social if p else 'Nuevo proveedor' }}{% endblock %}
+{% block content %}
+<div class="page-head"><div><h1>{{ 'Editar proveedor' if p else 'Nuevo proveedor' }}</h1></div></div>
+<form method="post" class="card" style="max-width:900px">{{ csrf() }}
+  <div class="form-grid">
+    <div class="field"><label>Razón social *</label><input type="text" name="razon_social" value="{{ p.razon_social if p }}" required></div>
+    <div class="field"><label>Nombre de fantasía</label><input type="text" name="nombre" value="{{ p.nombre or '' if p }}"></div>
+    <div class="field"><label>CUIT</label><input type="text" name="cuit" value="{{ p.cuit or '' if p }}" inputmode="numeric"></div>
+    <div class="field"><label>DNI</label><input type="text" name="dni" value="{{ p.dni or '' if p }}" inputmode="numeric"></div>
+    <div class="field"><label>Teléfono</label><input type="tel" name="telefono" value="{{ p.telefono or '' if p }}"></div>
+    <div class="field"><label>Email</label><input type="email" name="email" value="{{ p.email or '' if p }}"></div>
+    <div class="field"><label>Dirección</label><input type="text" name="direccion" value="{{ p.direccion or '' if p }}"></div>
+    <div class="field"><label>Persona de contacto</label><input type="text" name="contacto" value="{{ p.contacto or '' if p }}"></div>
+    <div class="field"><label>Estado</label><select name="activo"><option value="1">Activo</option><option value="0" {{ 'selected' if p and not p.activo }}>Inactivo</option></select></div>
+    <div class="field full"><label>Observaciones</label><textarea name="observaciones">{{ p.observaciones or '' if p }}</textarea></div>
+  </div>
+  <div class="form-actions"><a class="btn btn-ghost" href="{{ url_for('proveedores.index') }}">Cancelar</a><button class="btn btn-primary" type="submit"><i data-lucide="save"></i>Guardar</button></div>
+</form>
+{% endblock %}

@@ -1,0 +1,23 @@
+{% extends "base.html" %}
+{% from "_macros.html" import paginacion, vacio, aplicar_filtros, estado_badge, filtro_btns %}
+{% block title %}Proveedores{% endblock %}
+{% block content %}
+<div class="page-head"><div><h1>Proveedores</h1></div>
+  <div class="actions"><a class="btn btn-primary" href="{{ url_for('proveedores.form') }}"><i data-lucide="plus"></i>Nuevo proveedor</a></div></div>
+<form class="filters" method="get"><div class="row">
+  <div class="field wide"><label>Buscar (razón social, nombre, CUIT, DNI)</label><input type="search" name="q" value="{{ request.args.q or '' }}"></div>
+  <div class="field"><label>Estado</label><select name="estado"><option value="">Todos</option><option value="1" {{ 'selected' if request.args.estado=='1' }}>Activos</option><option value="0" {{ 'selected' if request.args.estado=='0' }}>Inactivos</option></select></div>
+  <div class="field"><label>&nbsp;</label><label class="check"><input type="checkbox" name="con_deuda" value="1" {{ 'checked' if request.args.con_deuda }}> Con deuda</label></div>
+  {{ filtro_btns('proveedores.index') }}
+</div></form>
+{% if not buscado %}{{ aplicar_filtros() }}
+{% elif rows %}
+<div class="table-wrap"><table class="cards">
+  <thead><tr><th>Razón social</th><th>CUIT</th><th>Contacto</th><th>Teléfono</th><th class="num">Comprado</th><th class="num">Deuda</th><th>Estado</th></tr></thead>
+  <tbody>{% for p in rows %}<tr data-href="{{ url_for('proveedores.detalle', pid=p.id) }}">
+    <td class="cell-main">{{ p.razon_social }}</td><td>{{ p.cuit or '—' }}</td><td>{{ p.contacto or p.nombre or '—' }}</td><td>{{ p.telefono or '—' }}</td>
+    <td class="num">{{ p.comprado|money }}</td><td class="num">{% if p.deuda > 0 %}<span class="badge warning">{{ p.deuda|money }}</span>{% else %}—{% endif %}</td><td>{{ estado_badge(p.activo) }}</td></tr>{% endfor %}</tbody>
+</table></div>
+{{ paginacion(pag) }}
+{% else %}<div class="card">{{ vacio() }}</div>{% endif %}
+{% endblock %}

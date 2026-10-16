@@ -1,0 +1,23 @@
+{% extends "base.html" %}
+{% from "_macros.html" import csrf, opciones %}
+{% block title %}{{ 'Editar cliente' if c else 'Nuevo cliente' }}{% endblock %}
+{% block content %}
+<div class="page-head"><div><h1>{{ 'Editar cliente' if c else 'Nuevo cliente' }}</h1></div></div>
+<form method="post" class="card" style="max-width:900px">{{ csrf() }}
+  <div class="form-grid">
+    <div class="field"><label>Nombre *</label><input type="text" name="nombre" value="{{ c.nombre if c }}" required></div>
+    <div class="field"><label>Apellido *</label><input type="text" name="apellido" value="{{ c.apellido if c }}" required></div>
+    <div class="field"><label>DNI</label><input type="text" name="dni" value="{{ c.dni or '' if c }}" inputmode="numeric"></div>
+    <div class="field"><label>Teléfono</label><input type="tel" name="telefono" value="{{ c.telefono or '' if c }}"></div>
+    <div class="field"><label>WhatsApp</label><input type="tel" name="whatsapp" value="{{ c.whatsapp or '' if c }}"></div>
+    <div class="field"><label>Email</label><input type="email" name="email" value="{{ c.email or '' if c }}"></div>
+    <div class="field full"><label>Dirección</label><input type="text" name="direccion" value="{{ c.direccion or '' if c }}"></div>
+    {% if es_admin() %}
+    <div class="field"><label>Local</label><select name="ubicacion_id">{{ opciones(ubics, c.ubicacion_id if c, '— Sin local —') }}</select></div>
+    <div class="field"><label>Límite de crédito (0 = sin límite)</label><input type="number" name="limite_credito" step="0.01" min="0" value="{{ limite }}"></div>
+    <div class="field"><label>Estado</label><select name="activo"><option value="1">Activo</option><option value="0" {{ 'selected' if c and not c.activo }}>Inactivo</option></select></div>
+    {% endif %}
+  </div>
+  <div class="form-actions"><a class="btn btn-ghost" href="{{ url_for('clientes.detalle', cid=c.id) if c else url_for('clientes.index') }}">Cancelar</a><button class="btn btn-primary" type="submit"><i data-lucide="save"></i>Guardar</button></div>
+</form>
+{% endblock %}

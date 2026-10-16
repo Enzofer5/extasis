@@ -1,0 +1,110 @@
+{% extends "base.html" %}
+{% from "_macros.html" import venta_estado, periodo_filtro %}
+{% block title %}Inicio{% endblock %}
+{% block content %}
+{% set nombre_periodo = dict(periodos).get(clave, desde|fecha_corta ~ ' al ' ~ hasta|fecha_corta) %}
+<div class="dash-fondo">
+<div class="dash-hero">
+  <img class="dash-hero-lobo" src="{{ url_for('static', filename='img/lobo.png') }}" alt="">
+  <div class="dash-hero-scan"></div>
+  <div class="dash-hero-txt">
+    <div class="dash-hero-marca">ÉXTASIS <small>INDUMENTARIA</small></div>
+    <h1>Hola, {{ g.user.nombre.split(' ')[0] }}</h1>
+    <div class="sub">Estado general del negocio · {{ nombre_periodo }}</div>
+    <div class="actions">
+      <a class="btn" href="{{ url_for('stock.ajuste') }}"><i data-lucide="package-plus"></i>Cargar mercadería</a>
+      <a class="btn" href="{{ url_for('productos.carga') }}"><i data-lucide="list-plus"></i>Cargar productos</a>
+      <a class="btn btn-primary" href="{{ url_for('transferencias.nueva') }}"><i data-lucide="truck"></i>Enviar a un local</a>
+    </div>
+  </div>
+</div>
+{{ periodo_filtro(periodos, clave, desde, hasta) }}
+
+{% if sin_costo.renglones %}
+<div class="flash warning"><span>Hay {{ sin_costo.unidades }} prendas vendidas sin costo registrado en este período: la ganancia de esas ventas no es exacta.</span></div>
+{% endif %}
+
+{# ---------------- Resumen general ---------------- #}
+<div class="kpis">
+  <div class="kpi accent"><div class="lbl"><i data-lucide="receipt"></i>Ventas de todos los locales</div><div class="val">{{ total.ventas|money }}</div>
+    <div class="foot">{{ total.operaciones }} ventas · {{ total.unidades }} prendas</div></div>
+  <div class="kpi {{ 'success' if total.bruta >= 0 else 'danger' }}"><div class="lbl"><i data-lucide="trending-up"></i>Ganancia bruta</div><div class="val">{{ total.bruta|money }}</div>
+    <div class="foot">Ventas − costo de lo vendido ({{ total.costo|money }})</div></div>
+  <div class="kpi"><div class="lbl"><i data-lucide="boxes"></i>Prendas en stock</div><div class="val">{{ stock.unidades }}</div>
+    <div class="foot">Depósito {{ deposito.stock.unidades if deposito else 0 }}{% for loc in locales %} · {{ loc.nombre.replace('Éxtasis — ', '') }} {{ loc.stock.unidades }}{% endfor %}</div></div>
+  <div class="kpi"><div class="lbl"><i data-lucide="banknote"></i>Valor del inventario</div><div class="val">{{ stock.valor_costo|money }}</div>
+    <div class="foot">A costo · a precio de venta {{ stock.valor_venta|money }}</div></div>
+  <div class="kpi {{ 'warning' if stock.por_agotarse }}"><div class="lbl"><i data-lucide="trending-down"></i>Stock bajo</div><div class="val">{{ stock.por_agotarse }}</div>
+    <div class="foot"><a href="{{ url_for('stock.bajo_stock') }}">Ver cuáles</a> · {{ stock.agotados }} agotados</div></div>
+  <div class="kpi"><div class="lbl"><i data-lucide="store"></i>Locales</div><div class="val">{{ locales|length }}</div>
+    <div class="foot"><a href="{{ url_for('panel.locales') }}">Comparar locales</a> · 1 depósito</div></div>
+  <div class="kpi"><div class="lbl"><i data-lucide="package-plus"></i>Mercadería que entró</div><div class="val">{{ movs.get('COMPRA', {}).get('unidades', 0) + movs.get('ENTRADA', {}).get('unidades', 0) }}</div>
+    <div class="foot">prendas · <a href="{{ url_for('stock.movimientos', desde=desde, hasta=hasta) }}">ver movimientos</a></div></div>
+  <div class="kpi"><div class="lbl"><i data-lucide="truck"></i>Enviado a locales</div><div class="val">{{ movs.get('TRANSFERENCIA', {}).get('unidades', 0) }}</div>
+    <div class="foot">prendas · vendidas {{ movs.get('VENTA', {}).get('unidades', 0) }}</div></div>
+</div>
+
+{# ---------------- Locales ---------------- #}
+{% for loc in locales %}
+<div class="card" style="margin-bottom:1rem">
+  <div class="card-head">
+    <h3><i data-lucide="store"></i> {{ loc.nombre }}</h3>
+    {% if loc.caja %}<a class="badge success" href="{{ url_for('cajas.local', ub_id=loc.id) }}">Caja abierta</a>
+    {% else %}<span class="badge">Caja cerrada</span>{% endif %}
+  </div>
+
+  <div class="kpis">
+    <div class="kpi accent"><div class="lbl"><i data-lucide="receipt"></i>Vendido · {{ nombre_periodo|lower }}</div><div class="val">{{ loc.ventas.ventas|money }}</div>
+      <div class="foot">{{ loc.ventas.operaciones }} ventas · {{ loc.ventas.unidades }} prendas</div></div>
+    <div class="kpi {{ 'success' if loc.ventas.bruta > 0 }}"><div class="lbl"><i data-lucide="trending-up"></i>Ganancia</div><div class="val">{{ loc.ventas.bruta|money }}</div>
+      <div class="foot">Vendido − costo de la mercadería</div></div>
+    <div class="kpi"><div class="lbl"><i data-lucide="wallet"></i>Efectivo en caja</div>
+      <div class="val">{{ loc.caja_resumen.esperado|money if loc.caja_resumen else '—' }}</div>
+      <div class="foot">{% if loc.caja %}Abierta {{ loc.caja.fecha_apertura|fecha }}{% else %}Caja cerrada{% endif %}</div></div>
+    <div class="kpi {{ 'warning' if loc.stock.por_agotarse }}"><div class="lbl"><i data-lucide="boxes"></i>Stock en el local</div><div class="val">{{ loc.stock.unidades }}</div>
+      <div class="foot">{% if loc.stock.por_agotarse %}<a href="{{ url_for('stock.bajo_stock', ubicacion_id=loc.id) }}">{{ loc.stock.por_agotarse }} por agotarse</a>{% else %}prendas{% endif %}</div></div>
+  </div>
+
+  <div class="grid grid-2" style="align-items:start">
+    <div>
+      <h4 class="mb-0">Ingresos por forma de pago</h4>
+      <div class="table-wrap mt-1"><table><tbody>
+        {% for m in loc.por_metodo %}<tr><td>{{ m.etiqueta }}</td><td class="num">{{ m.operaciones }} ventas</td><td class="num"><b>{{ m.total|money }}</b></td></tr>
+        {% else %}<tr><td class="muted">Sin ventas en el período</td></tr>{% endfor %}
+        {% if loc.por_metodo|length > 1 %}<tr><td><b>Total</b></td><td></td><td class="num"><b>{{ loc.ventas.ventas|money }}</b></td></tr>{% endif %}
+      </tbody></table></div>
+    </div>
+    <div>
+      <h4 class="mb-0">Últimas ventas</h4>
+      <div class="table-wrap mt-1"><table><tbody>
+        {% for v in loc.ultimas %}<tr data-href="{{ url_for('ventas.detalle', venta_id=v.id) }}"><td>#{{ v.id }}</td><td>{{ v.fecha|fecha }}</td><td>{{ v.metodo }}</td><td class="num">{{ v.total|money }}</td>{% if v.estado != 'Completada' %}<td>{{ venta_estado(v.estado) }}</td>{% endif %}</tr>
+        {% else %}<tr><td class="muted">Todavía no hay ventas.</td></tr>{% endfor %}
+      </tbody></table></div>
+      <a class="btn btn-sm mt-1" href="{{ url_for('ventas.index', ubicacion_id=loc.id) }}">Ver todas las ventas</a>
+    </div>
+  </div>
+</div>
+{% endfor %}
+
+{# ---------------- Depósito ---------------- #}
+{% if deposito %}
+<div class="card" style="margin-bottom:1rem">
+  <div class="card-head"><h3><i data-lucide="warehouse"></i> {{ deposito.nombre }}</h3>
+    <a class="btn btn-sm" href="{{ url_for('stock.index', ubicacion_id=deposito.id) }}">Ver stock</a></div>
+  <div class="kpis">
+    <div class="kpi"><div class="lbl"><i data-lucide="boxes"></i>Prendas en depósito</div><div class="val">{{ deposito.stock.unidades }}</div></div>
+    <div class="kpi"><div class="lbl"><i data-lucide="banknote"></i>Valor (a costo)</div><div class="val">{{ deposito.stock.valor_costo|money }}</div>
+      <div class="foot">A precio de venta {{ deposito.stock.valor_venta|money }}</div></div>
+    <div class="kpi {{ 'warning' if deposito.stock.por_agotarse }}"><div class="lbl"><i data-lucide="trending-down"></i>Por agotarse</div><div class="val">{{ deposito.stock.por_agotarse }}</div>
+      <div class="foot"><a href="{{ url_for('stock.bajo_stock', ubicacion_id=deposito.id) }}">Ver cuáles</a></div></div>
+  </div>
+  <h4 class="mb-0">Últimos envíos a locales</h4>
+  <div class="table-wrap mt-1"><table><tbody>
+    {% for e in deposito.envios %}<tr data-href="{{ url_for('transferencias.detalle', tid=e.id) }}"><td>#{{ e.id }}</td><td>{{ e.fecha|fecha }}</td><td>→ {{ e.destino }}</td><td class="num">{{ e.unidades }} prendas</td></tr>
+    {% else %}<tr><td class="muted">Todavía no hay envíos.</td></tr>{% endfor %}
+  </tbody></table></div>
+</div>
+{% endif %}
+
+</div>
+{% endblock %}

@@ -1,0 +1,23 @@
+{% extends "base.html" %}
+{% block title %}Caja #{{ res.caja.id }}{% endblock %}
+{% block content %}
+{% set c = res.caja %}
+<div class="page-head"><div><h1>Caja #{{ c.id }}</h1><div class="sub">{{ c.ubicacion }}</div></div>
+  <div class="actions"><button class="btn" onclick="window.print()"><i data-lucide="printer"></i>Imprimir</button></div></div>
+<div class="kpis">
+  <div class="kpi"><div class="lbl">Efectivo esperado</div><div class="val">{{ (c.efectivo_esperado if c.estado == 'CERRADA' else res.esperado)|money }}</div></div>
+  <div class="kpi"><div class="lbl">Efectivo declarado</div><div class="val">{{ c.efectivo_real|money if c.efectivo_real is not none else '—' }}</div></div>
+  <div class="kpi {{ 'success' if c.diferencia is not none and c.diferencia == 0 else ('danger' if c.diferencia is not none and c.diferencia < 0 else 'warning') }}"><div class="lbl">Diferencia</div><div class="val">{{ c.diferencia|money if c.diferencia is not none else '—' }}</div></div>
+  <div class="kpi"><div class="lbl">Ventas</div><div class="val">{{ res.ventas_total|money }}</div><div class="foot">{{ res.cant_ventas }} operaciones</div></div>
+</div>
+<div class="grid grid-2" style="align-items:start">
+  <div class="card"><dl class="dl">
+    <dt>Estado</dt><dd><span class="badge {{ 'success' if c.estado == 'ABIERTA' }}">{{ c.estado }}</span></dd>
+    <dt>Apertura</dt><dd>{{ c.fecha_apertura|fecha }} · {{ c.usuario_apertura }}</dd>
+    <dt>Cierre</dt><dd>{{ c.fecha_cierre|fecha or '—' }}{% if c.usuario_cierre %} · {{ c.usuario_cierre }}{% endif %}</dd>
+    {% if c.observaciones %}<dt>Obs.</dt><dd>{{ c.observaciones }}</dd>{% endif %}</dl></div>
+  <div class="stack">{% include "cajas/_resumen.html" %}</div>
+</div>
+<h3 class="mt-2">Movimientos</h3>
+{% include "cajas/_movs.html" %}
+{% endblock %}

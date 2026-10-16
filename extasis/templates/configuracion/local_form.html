@@ -1,0 +1,19 @@
+{% extends "base.html" %}
+{% from "_macros.html" import csrf %}
+{% block title %}{{ l.nombre if l else 'Nueva ubicación' }}{% endblock %}
+{% block content %}
+<div class="page-head"><div><h1>{{ 'Editar ubicación' if l else 'Nueva ubicación' }}</h1></div></div>
+<form method="post" class="card" style="max-width:800px">{{ csrf() }}
+  <div class="form-grid">
+    <div class="field full"><label>Nombre *</label><input type="text" name="nombre" value="{{ l.nombre if l }}" required></div>
+    {% if not l %}<div class="field"><label>Tipo</label><select name="tipo"><option value="LOCAL">Local de venta</option><option value="DEPOSITO">Depósito</option></select></div>{% endif %}
+    <div class="field"><label>Dirección</label><input type="text" name="direccion" value="{{ l.direccion or '' if l }}"></div>
+    <div class="field"><label>Teléfono</label><input type="tel" name="telefono" value="{{ l.telefono or '' if l }}"></div>
+    <div class="field"><label>Responsable</label><input type="text" name="responsable" value="{{ l.responsable or '' if l }}"></div>
+    <div class="field"><label>Horarios</label><input type="text" name="horarios" value="{{ l.horarios or '' if l }}"></div>
+    <div class="field"><label>Estado</label><select name="activo"><option value="1">Activo</option><option value="0" {{ 'selected' if l and not l.activo }}>Inactivo</option></select></div>
+    <div class="field full"><label>Observaciones</label><textarea name="observaciones">{{ l.observaciones or '' if l }}</textarea></div>
+  </div>
+  <div class="form-actions"><a class="btn btn-ghost" href="{{ url_for('locales.index') }}">Cancelar</a><button class="btn btn-primary" type="submit"><i data-lucide="save"></i>Guardar</button></div>
+</form>
+{% endblock %}

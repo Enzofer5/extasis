@@ -1,0 +1,13 @@
+{% extends "base.html" %}
+{% block title %}Alertas{% endblock %}
+{% block content %}
+<div class="page-head"><div><h1>Alertas</h1></div></div>
+<div class="alert-list" style="max-width:760px">
+{% for a in alertas %}
+  <a href="{{ url_for(a.url) }}" class="{{ a.tipo }}"><span class="ic"><i data-lucide="{{ a.icono }}"></i></span>
+    <span><b>{{ a.titulo }}</b><br><span class="muted">{{ a.texto }}</span></span><i data-lucide="chevron-right" style="margin-left:auto"></i></a>
+{% else %}
+  <div class="card empty"><i data-lucide="check-circle-2"></i><div>No hay alertas. Todo en orden.</div></div>
+{% endfor %}
+</div>
+{% endblock %}

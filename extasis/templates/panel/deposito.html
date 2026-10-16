@@ -1,0 +1,73 @@
+{% extends "base.html" %}
+{% from "_macros.html" import paginacion, vacio, periodo_filtro %}
+{% block title %}Depósito{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div><h1>{{ dep.nombre.replace('Éxtasis — ', '') }}</h1><div class="sub">Sólo la mercadería que está en el depósito (sin contar la de los locales)</div></div>
+  <div class="actions">
+    <a class="btn" href="{{ url_for('stock.ajuste') }}"><i data-lucide="package-plus"></i>Cargar mercadería</a>
+    <a class="btn btn-primary" href="{{ url_for('transferencias.nueva') }}"><i data-lucide="truck"></i>Enviar a un local</a>
+  </div>
+</div>
+
+<div class="kpis">
+  <div class="kpi accent"><div class="lbl"><i data-lucide="boxes"></i>Prendas en depósito</div><div class="val">{{ resumen.unidades }}</div>
+    <div class="foot">{{ resumen.productos }} productos distintos</div></div>
+  <div class="kpi"><div class="lbl"><i data-lucide="banknote"></i>Valor a costo</div><div class="val">{{ resumen.valor_costo|money }}</div>
+    <div class="foot">Lo que costó la mercadería</div></div>
+  <div class="kpi"><div class="lbl"><i data-lucide="tag"></i>Valor a precio de venta</div><div class="val">{{ resumen.valor_venta|money }}</div>
+    <div class="foot">Si se vendiera todo</div></div>
+  <div class="kpi {{ 'warning' if resumen.por_agotarse }}"><div class="lbl"><i data-lucide="trending-down"></i>Por agotarse</div><div class="val">{{ resumen.por_agotarse }}</div>
+    <div class="foot"><a href="{{ url_for('panel.deposito', estado='bajo', todos=1) }}">Ver cuáles</a> · {{ resumen.agotados }} agotados</div></div>
+</div>
+
+{# ---------- Productos en depósito ---------- #}
+<div class="card" style="margin-bottom:1rem">
+  <div class="card-head"><h3><i data-lucide="warehouse"></i> Productos en el depósito</h3>
+    <a class="btn btn-sm" href="{{ url_for('panel.deposito', csv=1, q=request.args.q, estado=request.args.estado, todos=request.args.todos) }}"><i data-lucide="download"></i>Excel (CSV)</a></div>
+  <form class="filters" method="get"><div class="row">
+    <div class="field wide"><label>Producto o código</label><input type="search" name="q" value="{{ request.args.q or '' }}" placeholder="Nombre, código interno o de barras"></div>
+    <div class="field"><label>Mostrar</label><select name="estado"><option value="">Todo</option><option value="bajo" {{ 'selected' if request.args.estado == 'bajo' }}>Sólo por agotarse</option></select></div>
+    <div class="field"><label>&nbsp;</label><label class="check"><input type="checkbox" name="todos" value="1" {{ 'checked' if request.args.todos }}> Incluir sin stock</label></div>
+    <div class="btns"><button class="btn btn-primary" type="submit"><i data-lucide="search"></i>Buscar</button>
+      <a class="btn btn-ghost" href="{{ url_for('panel.deposito') }}">Limpiar</a></div>
+  </div></form>
+  {% if rows %}
+  <div class="table-wrap"><table class="cards">
+    <thead><tr><th>Producto</th><th>Código</th><th>Talle</th><th>Color</th><th class="num">Cantidad</th><th class="num">Costo unit.</th><th class="num">Precio venta</th><th class="num">Valor a costo</th></tr></thead>
+    <tbody>{% for r in rows %}
+    <tr data-href="{{ url_for('productos.detalle', producto_id=r.producto_id) }}">
+      <td class="cell-main">{{ r.producto }}</td><td class="mono">{{ r.codigo_interno or r.codigo_barras or '—' }}</td>
+      <td>{{ r.talle }}</td><td>{% if r.hex %}<i class="swatch" style="background:{{ r.hex }}"></i> {% endif %}{{ r.color }}</td>
+      <td class="num"><span class="badge {{ 'danger' if r.cantidad <= 0 else ('warning' if r.cantidad <= r.stock_minimo else '') }}">{{ r.cantidad }}</span></td>
+      <td class="num">{{ r.precio_compra|money if r.precio_compra else '—' }}</td><td class="num">{{ r.precio_venta|money }}</td>
+      <td class="num">{{ r.valor_costo|money if r.precio_compra else '—' }}</td>
+    </tr>{% endfor %}</tbody>
+  </table></div>
+  {{ paginacion(pag) }}
+  {% else %}{{ vacio('No hay productos con esos filtros.') }}{% endif %}
+</div>
+
+{# ---------- Movimientos del depósito ---------- #}
+<div class="card">
+  <div class="card-head"><h3><i data-lucide="history"></i> Entradas y salidas del depósito</h3>
+    <a class="btn btn-sm" href="{{ url_for('stock.movimientos', ubicacion_id=dep.id) }}">Historial completo</a></div>
+  {{ periodo_filtro(periodos, clave, desde, hasta) }}
+  <div class="kpis">
+    {% set m = mov_periodo %}
+    <div class="kpi"><div class="lbl">Entró (compras y entradas)</div><div class="val">{{ (m.get('COMPRA', {}).get('unidades', 0)) + (m.get('ENTRADA', {}).get('unidades', 0)) }}</div><div class="foot">prendas</div></div>
+    <div class="kpi"><div class="lbl">Enviado a locales</div><div class="val">{{ m.get('TRANSFERENCIA', {}).get('unidades', 0) }}</div><div class="foot">prendas</div></div>
+    <div class="kpi"><div class="lbl">Salidas y ajustes</div><div class="val">{{ (m.get('SALIDA', {}).get('unidades', 0)) + (m.get('AJUSTE', {}).get('unidades', 0)) }}</div><div class="foot">prendas</div></div>
+    <div class="kpi"><div class="lbl">Envíos por local</div><div class="val" style="font-size:1rem">
+      {% for e in envios %}<div>{{ e.destino.replace('Éxtasis — ', '') }}: <b>{{ e.unidades }}</b></div>{% else %}<span class="muted">Sin envíos</span>{% endfor %}</div></div>
+  </div>
+  <div class="table-wrap"><table class="cards">
+    <thead><tr><th>Fecha</th><th>Tipo</th><th>Producto</th><th class="num">Cant.</th><th>Desde</th><th>Hacia</th><th>Usuario</th></tr></thead>
+    <tbody>{% for x in movs %}<tr>
+      <td>{{ x.fecha|fecha }}</td><td><span class="badge">{{ x.tipo }}</span></td>
+      <td class="cell-main">{{ x.producto }} · {{ x.talle }} · {{ x.color }}</td><td class="num">{{ x.cantidad }}</td>
+      <td>{{ (x.origen or '—').replace('Éxtasis — ', '') }}</td><td>{{ (x.destino or '—').replace('Éxtasis — ', '') }}</td><td>{{ x.usuario }}</td>
+    </tr>{% else %}<tr><td colspan="7" class="muted">Sin movimientos.</td></tr>{% endfor %}</tbody>
+  </table></div>
+</div>
+{% endblock %}

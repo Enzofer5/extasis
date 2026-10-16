@@ -1,0 +1,14 @@
+{% extends "base.html" %}
+{% from "_macros.html" import estado_badge %}
+{% block title %}Locales y depósitos{% endblock %}
+{% block content %}
+<div class="page-head"><div><h1>Locales y depósitos</h1><div class="sub">Cada ubicación maneja su propio stock</div></div>
+  <div class="actions"><a class="btn btn-primary" href="{{ url_for('locales.form') }}"><i data-lucide="plus"></i>Nueva ubicación</a></div></div>
+<div class="table-wrap"><table class="cards">
+  <thead><tr><th>Nombre</th><th>Tipo</th><th>Dirección</th><th>Responsable</th><th>Horarios</th><th class="num">Stock</th><th>Caja</th><th>Estado</th></tr></thead>
+  <tbody>{% for l in rows %}<tr data-href="{{ url_for('locales.form', lid=l.id) }}">
+    <td class="cell-main">{{ l.nombre }}</td><td><span class="badge {{ 'info' if l.tipo == 'DEPOSITO' else '' }}">{{ 'Depósito' if l.tipo == 'DEPOSITO' else 'Local' }}</span></td>
+    <td>{{ l.direccion or '—' }}</td><td>{{ l.responsable or '—' }}</td><td>{{ l.horarios or '—' }}</td><td class="num">{{ l.unidades }}</td>
+    <td>{% if l.tipo == 'LOCAL' %}{{ 'Abierta' if l.caja else 'Cerrada' }}{% else %}—{% endif %}</td><td>{{ estado_badge(l.activo) }}</td></tr>{% endfor %}</tbody>
+</table></div>
+{% endblock %}

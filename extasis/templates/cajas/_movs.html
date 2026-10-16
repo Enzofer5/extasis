@@ -1,0 +1,9 @@
+<div class="table-wrap"><table class="cards">
+  <thead><tr><th>Hora</th><th>Tipo</th><th>Concepto</th><th>Método</th><th class="num">Monto</th><th>Usuario</th></tr></thead>
+  <tbody>{% for m in res.movimientos %}<tr>
+    <td>{{ m.fecha.strftime('%d/%m %H:%M') }}</td>
+    <td><span class="badge {{ 'success' if m.tipo in ('VENTA','PAGO_CLIENTE','INGRESO') else 'danger' }}">{{ m.tipo|replace('_',' ')|capitalize }}</span></td>
+    <td class="cell-main">{% if m.venta_id %}<a href="{{ url_for('ventas.detalle', venta_id=m.venta_id) }}">{{ m.concepto }}</a>{% else %}{{ m.concepto }}{% endif %}</td>
+    <td>{{ m.metodo }}</td><td class="num">{{ '−' if m.tipo in ('RETIRO','GASTO','DEVOLUCION') }}{{ m.monto|money }}</td><td>{{ m.usuario }}</td></tr>
+  {% else %}<tr><td colspan="6" class="muted">Sin movimientos todavía.</td></tr>{% endfor %}</tbody>
+</table></div>

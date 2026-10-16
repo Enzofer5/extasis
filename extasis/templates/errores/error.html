@@ -1,0 +1,14 @@
+{% extends "base.html" %}
+{% block title %}Error {{ codigo }}{% endblock %}
+{% block content %}
+<div class="card empty" style="max-width:520px;margin:2rem auto">
+  <i data-lucide="{{ 'lock' if codigo == 403 else 'alert-triangle' }}"></i>
+  <h1>{{ codigo }}</h1>
+  <p>{{ mensaje }}</p>
+  <a class="btn btn-primary" href="{{ url_for('dashboard.index') }}">Volver al inicio</a>
+</div>
+{% endblock %}
+{% block public %}
+<div class="login-wrap"><div class="card empty" style="max-width:480px"><h1>{{ codigo }}</h1><p>{{ mensaje }}</p>
+<a class="btn btn-primary" href="{{ url_for('auth.login') }}">Ir al inicio de sesión</a></div></div>
+{% endblock %}

@@ -1,0 +1,50 @@
+{% extends "base.html" %}
+{% from "_macros.html" import csrf %}
+{% block title %}Registrar compra{% endblock %}
+{% block content %}
+<div class="page-head"><div><h1>Registrar compra</h1><div class="sub">Al confirmar, el stock del depósito aumenta automáticamente</div></div></div>
+{% if not proveedores %}<div class="flash warning"><span>Primero cargá un proveedor. <a href="{{ url_for('proveedores.form') }}">Nuevo proveedor</a></span></div>{% endif %}
+<form method="post" id="f-co">
+  {{ csrf() }}<input type="hidden" name="items" id="items">
+  <div class="card"><div class="form-grid cols-3">
+    <div class="field"><label>Proveedor *</label><select name="proveedor_id" required><option value="">Seleccionar…</option>{% for p in proveedores %}<option value="{{ p.id }}">{{ p.razon_social }}</option>{% endfor %}</select></div>
+    <div class="field"><label>N° de factura</label><input type="text" name="numero_factura" maxlength="40"></div>
+    <div class="field"><label>Fecha</label><input type="date" name="fecha" value="{{ hoy }}"></div>
+    <div class="field"><label>Recibe</label><select name="ubicacion_id">{% for d in depositos %}<option value="{{ d.id }}" {{ 'selected' if deposito and d.id == deposito.id }}>{{ d.nombre }}</option>{% endfor %}</select></div>
+    <div class="field"><label>Método de pago</label><select name="metodo_pago_id"><option value="">—</option>{% for m in metodos if m.codigo != 'CTACTE' %}<option value="{{ m.id }}">{{ m.nombre }}</option>{% endfor %}</select></div>
+    <div class="field"><label>Monto pagado ahora</label><input type="number" name="monto_pagado" id="pagado" step="0.01" min="0" value="0" inputmode="decimal"><small>Lo que quede sin pagar se registra como deuda con el proveedor.</small></div>
+    <div class="field full"><label>Agregar producto</label>
+      <div class="picker-results">
+        <div class="input-group"><input type="search" id="buscar" placeholder="Escaneá o buscá el producto" autocomplete="off">
+          <button class="btn" type="button" id="btn-cam"><i data-lucide="camera"></i></button>
+          <a class="btn" href="{{ url_for('productos.nuevo') }}" target="_blank" title="Crear producto"><i data-lucide="plus"></i></a></div>
+        <div class="results" id="res"></div>
+      </div></div>
+  </div></div>
+  <div class="table-wrap mt-2"><table>
+    <thead><tr><th>Producto</th><th class="num">Cantidad</th><th class="num">Precio compra</th><th class="num">Subtotal</th><th></th></tr></thead>
+    <tbody id="lineas"></tbody>
+    <tfoot><tr><td colspan="3">Total</td><td class="num" id="total">$ 0</td><td></td></tr></tfoot>
+  </table></div>
+  <div class="card mt-2">
+    <div class="field"><label class="check"><input type="checkbox" name="actualizar_precio" value="1" checked> Actualizar el precio de compra de los productos con estos valores</label></div>
+    <div class="field"><label>Observaciones</label><input type="text" name="observaciones" maxlength="255"></div>
+    <div class="form-actions"><button class="btn btn-primary btn-lg" type="submit"><i data-lucide="check"></i>Confirmar compra</button></div>
+  </div>
+</form>
+{% endblock %}
+{% block scripts %}
+<script src="{{ url_for('static', filename='vendor/html5-qrcode.min.js') }}"></script>
+<script src="{{ url_for('static', filename='js/lineas.js') }}?v=1"></script>
+<script>
+(function(){
+  const tot=document.getElementById('total');
+  const lin=Lineas({tbody:document.getElementById('lineas'),hidden:document.getElementById('items'),conPrecio:true,
+    onChange:it=>{tot.textContent=money(it.reduce((a,b)=>a+b.cantidad*b.precio,0));}});
+  const pk=new VariantePicker({input:document.getElementById('buscar'),results:document.getElementById('res'),mostrarStock:false,onPick:v=>lin.agregar(v)});
+  document.getElementById('btn-cam').onclick=()=>Escaner.abrir(c=>pk.porCodigo(c));
+  document.getElementById('f-co').addEventListener('submit',e=>{if(!lin.items.length){e.preventDefault();toast('Agregá productos a la compra',false);}
+    else if(!confirm('¿Confirmás la compra? Se sumará al stock del depósito.')) e.preventDefault();});
+})();
+</script>
+{% endblock %}

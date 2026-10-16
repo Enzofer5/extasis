@@ -1,0 +1,1 @@
+{% macro badge_sol(e) %}<span class="badge {{ {'Pendiente':'warning','Aprobada':'info','Preparando':'info','Enviada':'accent','Recibida':'success','Rechazada':'danger'}.get(e,'') }}">{{ e }}</span>{% endmacro %}

@@ -1,0 +1,4 @@
+<div class="chips">
+  {% for k, t in [('hoy','Hoy'),('7dias','Últimos 7 días'),('mes','Este mes'),('mes_anterior','Mes anterior')] %}
+  <a class="chip {{ 'on' if request.args.periodo == k }}" href="{{ url_for(request.endpoint, periodo=k, ubicacion_id=request.args.ubicacion_id, por=request.args.por) }}">{{ t }}</a>{% endfor %}
+</div>

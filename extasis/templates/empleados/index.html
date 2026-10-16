@@ -1,0 +1,25 @@
+{% extends "base.html" %}
+{% from "_macros.html" import paginacion, vacio, aplicar_filtros, opciones, estado_badge, filtro_btns %}
+{% block title %}Empleados{% endblock %}
+{% block content %}
+<div class="page-head"><div><h1>Empleados</h1></div>
+  <div class="actions"><a class="btn" href="{{ url_for('empleados.pagos') }}"><i data-lucide="wallet"></i>Pagos</a>
+  <a class="btn btn-primary" href="{{ url_for('empleados.form') }}"><i data-lucide="user-plus"></i>Nuevo empleado</a></div></div>
+<form class="filters" method="get"><div class="row">
+  <div class="field wide"><label>Buscar (nombre, apellido, DNI)</label><input type="search" name="q" value="{{ request.args.q or '' }}"></div>
+  <div class="field"><label>Puesto</label><select name="puesto"><option value="">Todos</option>{% for p in puestos %}<option {{ 'selected' if request.args.puesto == p }}>{{ p }}</option>{% endfor %}</select></div>
+  <div class="field"><label>Local</label><select name="ubicacion_id">{{ opciones(ubics, request.args.ubicacion_id) }}</select></div>
+  <div class="field"><label>Estado</label><select name="estado"><option value="">Todos</option><option value="1" {{ 'selected' if request.args.estado=='1' }}>Activos</option><option value="0" {{ 'selected' if request.args.estado=='0' }}>Inactivos</option></select></div>
+  {{ filtro_btns('empleados.index') }}
+</div></form>
+{% if not buscado %}{{ aplicar_filtros() }}
+{% elif rows %}
+<div class="table-wrap"><table class="cards">
+  <thead><tr><th>Empleado</th><th>DNI</th><th>Puesto</th><th>Local</th><th>Ingreso</th><th class="num">Sueldo</th><th class="num">Total pagado</th><th>Estado</th></tr></thead>
+  <tbody>{% for e in rows %}<tr data-href="{{ url_for('empleados.detalle', eid=e.id) }}">
+    <td class="cell-main">{{ e.apellido }}, {{ e.nombre }}</td><td>{{ e.dni }}</td><td>{{ e.puesto }}</td><td>{{ e.ubicacion or 'General' }}</td><td>{{ e.fecha_ingreso|fecha_corta or '—' }}</td>
+    <td class="num">{{ e.sueldo|money }}</td><td class="num">{{ e.pagado|money }}</td><td>{{ estado_badge(e.activo) }}</td></tr>{% endfor %}</tbody>
+</table></div>
+{{ paginacion(pag) }}
+{% else %}<div class="card">{{ vacio() }}</div>{% endif %}
+{% endblock %}

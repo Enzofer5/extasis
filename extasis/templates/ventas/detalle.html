@@ -1,0 +1,41 @@
+{% extends "base.html" %}
+{% from "_macros.html" import csrf, venta_estado %}
+{% block title %}Venta #{{ v.id }}{% endblock %}
+{% block content %}
+<div class="page-head"><div><h1>Venta #{{ v.id }}</h1><div class="sub">{{ v.ubicacion }} · {{ v.fecha|fecha }} · {{ v.vendedor }}</div></div>
+  <div class="actions">
+    <a class="btn" href="{{ url_for('ventas.ticket', venta_id=v.id) }}" target="_blank"><i data-lucide="printer"></i>Ticket</a>
+    {% if v.estado == 'Completada' and tiene_permiso('devoluciones.crear') %}<a class="btn" href="{{ url_for('devoluciones.nueva', venta_id=v.id) }}"><i data-lucide="undo-2"></i>Devolución</a>{% endif %}
+    {% if v.estado == 'Completada' and es_admin() %}<button class="btn btn-danger" data-modal="m-anular"><i data-lucide="ban"></i>Anular</button>{% endif %}
+  </div></div>
+<div class="grid grid-2" style="align-items:start">
+  <div class="card"><dl class="dl">
+    <dt>Estado</dt><dd>{{ venta_estado(v.estado) }}</dd><dt>Cliente</dt><dd>{% if v.cliente_id %}<a href="{{ url_for('clientes.detalle', cid=v.cliente_id) }}">{{ v.cliente }}</a>{% else %}Consumidor final{% endif %}</dd>
+    <dt>Método de pago</dt><dd>{{ v.metodo }}{% if v.entidad %} · {{ v.entidad }}{% endif %}{% if v.cuotas %} · {{ v.cuotas }} {{ 'pago' if v.cuotas == 1 else 'cuotas' }} de {{ (v.total / v.cuotas)|money }}{% endif %}</dd>
+    {% if v.credito_cambio and v.credito_cambio > 0 %}<dt>Cambio</dt><dd>Se tomaron {{ v.credito_cambio|money }} de la devolución {% if v.devolucion_origen_id %}<a href="{{ url_for('devoluciones.detalle', dev_id=v.devolucion_origen_id) }}">N° {{ v.devolucion_origen_id }}</a>{% endif %} · diferencia {{ (v.total - v.credito_cambio)|money }}</dd>{% endif %}<dt>Caja</dt><dd>#{{ v.caja_id }}</dd>
+    {% if v.observaciones %}<dt>Observaciones</dt><dd>{{ v.observaciones }}</dd>{% endif %}</dl></div>
+  <div class="card totals">
+    <div class="line"><span>Subtotal</span><span>{{ v.subtotal|money }}</span></div>
+    <div class="line"><span>Descuento</span><span>− {{ v.descuento|money }}</span></div>
+    {% if v.recargo and v.recargo > 0 %}<div class="line"><span>Interés {{ v.entidad }} {{ v.cuotas }} cuotas ({{ '%g'|format(v.interes_pct|float) }}%)</span><span>+ {{ v.recargo|money }}</span></div>{% endif %}
+    <div class="total"><span>TOTAL</span><span>{{ v.total|money }}</span></div>
+  </div>
+</div>
+<div class="table-wrap mt-2"><table class="cards">
+  <thead><tr><th>Producto</th><th>Talle</th><th>Color</th><th class="num">Cant.</th><th class="num">Precio</th><th class="num">Subtotal</th><th class="num">Devuelto</th></tr></thead>
+  <tbody>{% for d in det %}<tr><td class="cell-main">{{ d.producto }}</td><td>{{ d.talle }}</td><td>{{ d.color }}</td><td class="num">{{ d.cantidad }}</td>
+    <td class="num">{{ d.precio_unitario|money }}</td><td class="num">{{ d.subtotal|money }}</td><td class="num">{{ d.devuelto or '—' }}</td></tr>{% endfor %}</tbody>
+</table></div>
+{% if devs %}<h3 class="mt-2">Devoluciones</h3><div class="table-wrap"><table class="cards"><thead><tr><th>N°</th><th>Fecha</th><th>Motivo</th><th>Reintegro</th><th class="num">Total</th><th>Usuario</th></tr></thead><tbody>
+{% for d in devs %}<tr data-href="{{ url_for('devoluciones.detalle', dev_id=d.id) }}"><td class="cell-main">#{{ d.id }}</td><td>{{ d.fecha|fecha }}</td><td>{{ d.motivo }}</td><td>{{ d.reintegro|replace('_',' ')|capitalize }}</td><td class="num">{{ d.total|money }}</td><td>{{ d.usuario }}</td></tr>{% endfor %}</tbody></table></div>{% endif %}
+
+{% if es_admin() %}
+<div class="modal" id="m-anular"><div class="modal-box">
+  <div class="modal-head"><h3>Anular venta #{{ v.id }}</h3><button class="icon-btn" data-close><i data-lucide="x"></i></button></div>
+  <p class="muted">La venta no se elimina: queda como <b>Anulada</b>, el stock vuelve al local y se registra la salida de dinero en la caja.</p>
+  <form method="post" action="{{ url_for('ventas.anular', venta_id=v.id) }}">{{ csrf() }}
+    <div class="field"><label>Motivo *</label><input type="text" name="motivo" required maxlength="200"></div>
+    <button class="btn btn-danger btn-block" type="submit">Anular venta</button></form>
+</div></div>
+{% endif %}
+{% endblock %}

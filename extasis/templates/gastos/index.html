@@ -1,0 +1,88 @@
+{% extends "base.html" %}
+{% from "_macros.html" import csrf, paginacion, opciones, rango %}
+{% block title %}Gastos{% endblock %}
+{% block content %}
+<div class="page-head"><div><h1>Gastos</h1><div class="sub">Servicios y gastos fijos del negocio, y gastos diarios que se pagan con la caja de cada local.</div></div>
+  <div class="actions">
+    <a class="btn" href="{{ url_for('catalogos.index', tabla='categorias_gasto') }}"><i data-lucide="list"></i>Tipos de gasto</a>
+    {% if tab == 'servicios' %}<button class="btn btn-primary" data-modal="m-servicio"><i data-lucide="plus"></i>Registrar pago de servicio</button>
+    {% else %}<button class="btn btn-primary" data-modal="m-diario"><i data-lucide="plus"></i>Registrar gasto diario</button>{% endif %}
+  </div></div>
+
+<div class="gasto-tabs">
+  <a class="gasto-tab {{ 'on' if tab == 'servicios' }}" href="{{ url_for('gastos.index', tab='servicios') }}">
+    <i data-lucide="receipt"></i><div><b>Servicios y gastos fijos</b><small>Luz, agua, alquiler, WiFi… · este mes {{ (mes.get('SERVICIO') or 0)|money }}</small></div></a>
+  <a class="gasto-tab {{ 'on' if tab == 'diarios' }}" href="{{ url_for('gastos.index', tab='diarios') }}">
+    <i data-lucide="wallet"></i><div><b>Gastos diarios (caja)</b><small>Se descuentan de la caja del local · este mes {{ (mes.get('DIARIO') or 0)|money }}</small></div></a>
+</div>
+
+<form class="filters" method="get"><input type="hidden" name="tab" value="{{ tab }}"><div class="row">
+  <div class="field"><label>Tipo de gasto</label><select name="categoria_gasto_id">{{ opciones(cats, request.args.categoria_gasto_id, 'Todos') }}</select></div>
+  <div class="field"><label>Asociado a</label><select name="ubicacion_id"><option value="">Todos</option>
+    {% if tab == 'servicios' %}<option value="general" {{ 'selected' if request.args.ubicacion_id == 'general' }}>Negocio general</option>{% endif %}
+    {% for u in ubics %}<option value="{{ u.id }}" {{ 'selected' if request.args.ubicacion_id == u.id|string }}>{{ u.nombre }}</option>{% endfor %}</select></div>
+  {{ rango(desde, hasta) }}
+  <div class="btns"><button class="btn" type="submit"><i data-lucide="search"></i>Filtrar</button></div>
+</div></form>
+
+<div class="grid grid-2" style="align-items:start;margin-bottom:1rem">
+  <div class="kpi accent"><div class="lbl">Total {{ 'servicios' if tab == 'servicios' else 'gastos diarios' }} del período</div><div class="val">{{ total|money }}</div>
+    <div class="foot">{{ desde|fecha_corta }} al {{ hasta|fecha_corta }}</div></div>
+  <div class="card">{% for c in por_cat %}<div class="flex between" style="padding:.2rem 0"><span>{{ c.etiqueta }}</span><b>{{ c.total|money }}</b></div>{% else %}<span class="muted">Sin gastos en el período</span>{% endfor %}</div>
+</div>
+
+<div class="table-wrap"><table class="cards">
+  <thead><tr><th>Fecha</th><th>Tipo</th><th>Detalle</th>{% if tab == 'servicios' %}<th>Período</th>{% endif %}<th>{{ 'Asociado a' if tab == 'servicios' else 'Local' }}</th><th>Pago</th><th class="num">Monto</th><th>Usuario</th></tr></thead>
+  <tbody>{% for x in rows %}<tr><td>{{ x.fecha|fecha_corta }}</td><td>{{ x.categoria }}</td><td class="cell-main">{{ x.descripcion }}</td>
+    {% if tab == 'servicios' %}<td>{{ (x.periodo[5:] ~ '/' ~ x.periodo[:4]) if x.periodo else '—' }}</td>{% endif %}
+    <td>{{ x.ubicacion }}</td><td>{{ x.metodo }}</td><td class="num">{{ x.monto|money }}</td><td>{{ x.usuario }}</td></tr>
+  {% else %}<tr><td colspan="8" class="muted">No hay gastos en el período.</td></tr>{% endfor %}</tbody>
+</table></div>
+{{ paginacion(pag) }}
+
+<div class="modal" id="m-servicio"><div class="modal-box">
+  <div class="modal-head"><h3>Pago de servicio / gasto fijo</h3><button class="icon-btn" data-close type="button"><i data-lucide="x"></i></button></div>
+  <form method="post">{{ csrf() }}<input type="hidden" name="accion" value="servicio">
+    <div class="field"><label>Servicio *</label>
+      <div class="input-group"><select name="categoria_gasto_id" required>{% for c in cats_servicio %}<option value="{{ c.id }}">{{ c.nombre }}</option>{% endfor %}</select>
+        <button class="btn" type="button" data-modal="m-nuevo-tipo" title="Crear servicio"><i data-lucide="plus"></i></button></div></div>
+    <div class="form-grid">
+      <div class="field"><label>Mes que se paga</label><input type="month" name="periodo" value="{{ periodo }}"></div>
+      <div class="field"><label>Monto *</label><input type="number" name="monto" step="0.01" min="0.01" required inputmode="decimal"></div>
+      <div class="field"><label>Fecha de pago</label><input type="date" name="fecha" value="{{ hoy }}"></div>
+      <div class="field"><label>Medio de pago</label><select name="metodo_pago_id">{% for m in metodos %}<option value="{{ m.id }}" {{ 'selected' if m.codigo == 'TRANSFERENCIA' }}>{{ m.nombre }}</option>{% endfor %}</select></div>
+      <div class="field full"><label>¿De qué local o depósito?</label><select name="ubicacion_id"><option value="">Negocio general</option>{% for u in ubics %}<option value="{{ u.id }}">{{ u.nombre }}</option>{% endfor %}</select></div>
+      <div class="field full"><label>Detalle (opcional)</label><input type="text" name="descripcion" maxlength="200" placeholder="Se completa solo, ej: Luz 10/2026"></div>
+    </div>
+    <button class="btn btn-primary btn-block" type="submit">Guardar pago</button>
+  </form>
+</div></div>
+
+<div class="modal" id="m-diario"><div class="modal-box">
+  <div class="modal-head"><h3>Gasto diario (sale de la caja)</h3><button class="icon-btn" data-close type="button"><i data-lucide="x"></i></button></div>
+  <form method="post">{{ csrf() }}<input type="hidden" name="accion" value="diario">
+    <div class="field"><label>Local *</label><select name="ubicacion_id" required>
+      {% for l in locales_caja %}<option value="{{ l.id }}" {{ 'disabled' if not l.caja }}>{{ l.nombre }}{{ '' if l.caja else ' (caja cerrada)' }}</option>{% endfor %}</select></div>
+    <div class="field"><label>Tipo de gasto *</label>
+      <div class="input-group"><select name="categoria_gasto_id" required>{% for c in cats_diario %}<option value="{{ c.id }}">{{ c.nombre }}</option>{% endfor %}</select>
+        <button class="btn" type="button" data-modal="m-nuevo-tipo" title="Crear tipo"><i data-lucide="plus"></i></button></div></div>
+    <div class="form-grid">
+      <div class="field"><label>Monto *</label><input type="number" name="monto" step="0.01" min="0.01" required inputmode="decimal"></div>
+      <div class="field"><label>Medio de pago</label><select name="metodo_pago_id">{% for m in metodos %}<option value="{{ m.id }}" {{ 'selected' if m.codigo == 'EFECTIVO' }}>{{ m.nombre }}</option>{% endfor %}</select></div>
+      <div class="field full"><label>Detalle</label><input type="text" name="descripcion" maxlength="200" placeholder="Ej: artículos de limpieza"></div>
+    </div>
+    <p class="muted" style="font-size:.85rem">Se registra como egreso de la caja del local, así el cierre de caja da bien.</p>
+    <button class="btn btn-primary btn-block" type="submit">Guardar gasto</button>
+  </form>
+</div></div>
+
+<div class="modal" id="m-nuevo-tipo"><div class="modal-box">
+  <div class="modal-head"><h3>Nuevo tipo de gasto</h3><button class="icon-btn" data-close type="button"><i data-lucide="x"></i></button></div>
+  <form method="post" action="{{ url_for('catalogos.index', tabla='categorias_gasto') }}">{{ csrf() }}
+    <input type="hidden" name="volver" value="{{ url_for('gastos.index', tab=tab) }}">
+    <div class="field"><label>Nombre</label><input type="text" name="nombre" required maxlength="80" placeholder="Ej: Agua, Expensas, Cable"></div>
+    <div class="field"><label>Tipo</label><select name="tipo"><option value="SERVICIO" {{ 'selected' if tab == 'servicios' }}>Servicio / gasto fijo</option><option value="DIARIO" {{ 'selected' if tab == 'diarios' }}>Gasto diario (caja)</option></select></div>
+    <button class="btn btn-primary btn-block" type="submit">Crear</button>
+  </form>
+</div></div>
+{% endblock %}

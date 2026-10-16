@@ -1,0 +1,21 @@
+{% extends "base.html" %}
+{% from "_macros.html" import paginacion, opciones, rango %}
+{% block title %}Transferencias{% endblock %}
+{% block content %}
+<div class="page-head"><div><h1>Transferencias de stock</h1><div class="sub">Movimientos de mercadería entre depósito y locales</div></div>
+  {% if es_admin() %}<div class="actions"><a class="btn btn-primary" href="{{ url_for('transferencias.nueva') }}"><i data-lucide="plus"></i>Nueva transferencia</a></div>{% endif %}</div>
+<form class="filters" method="get"><div class="row">
+  {% if es_admin() %}<div class="field"><label>Origen</label><select name="origen_id">{{ opciones(ubics, request.args.origen_id, 'Todos') }}</select></div>
+  <div class="field"><label>Destino</label><select name="destino_id">{{ opciones(ubics, request.args.destino_id, 'Todos') }}</select></div>{% endif %}
+  {{ rango(desde, hasta) }}
+  <div class="btns"><button class="btn btn-primary" type="submit"><i data-lucide="search"></i>Filtrar</button></div>
+</div></form>
+<div class="table-wrap"><table class="cards">
+  <thead><tr><th>N°</th><th>Fecha</th><th>Origen</th><th>Destino</th><th class="num">Unidades</th><th>Estado</th><th>Usuario</th></tr></thead>
+  <tbody>{% for t in rows %}<tr data-href="{{ url_for('transferencias.detalle', tid=t.id) }}">
+    <td class="cell-main">#{{ t.id }}</td><td>{{ t.fecha|fecha }}</td><td>{{ t.origen }}</td><td>{{ t.destino }}</td><td class="num">{{ t.unidades }}</td>
+    <td><span class="badge {{ 'success' if t.estado == 'Completada' else 'warning' }}">{{ t.estado }}</span></td><td>{{ t.usuario }}</td></tr>
+  {% else %}<tr><td colspan="7" class="muted">No hay transferencias en el período.</td></tr>{% endfor %}</tbody>
+</table></div>
+{{ paginacion(pag) }}
+{% endblock %}

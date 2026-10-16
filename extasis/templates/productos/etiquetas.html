@@ -1,0 +1,33 @@
+<!doctype html>
+<html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Etiquetas · {{ p.nombre }}</title>
+<style>
+  body{font-family:Arial,sans-serif;margin:0;padding:12px;background:#fff;color:#000}
+  .bar{display:flex;gap:8px;align-items:center;margin-bottom:12px;flex-wrap:wrap}
+  .bar button,.bar input{font-size:15px;padding:6px 10px}
+  .grid{display:flex;flex-wrap:wrap;gap:6px}
+  .et{width:50mm;height:30mm;border:1px dashed #bbb;padding:2mm;box-sizing:border-box;text-align:center;overflow:hidden;page-break-inside:avoid}
+  .et .n{font-size:9px;font-weight:bold;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .et .v{font-size:9px}
+  .et .p{font-size:12px;font-weight:bold}
+  .et svg{width:100%;height:13mm}
+  @media print{.bar{display:none}.et{border:0}body{padding:0}}
+</style></head>
+<body>
+<div class="bar">
+  <form method="get">Copias por variante: <input type="number" name="cant" value="{{ cant }}" min="1" max="50" style="width:70px"> <button>Actualizar</button></form>
+  <button onclick="window.print()">🖨 Imprimir</button>
+</div>
+<div class="grid">
+{% for v in variantes %}{% for i in range(cant) %}
+  <div class="et"><div class="n">ÉXTASIS · {{ p.nombre }}</div><div class="v">T. {{ v.talle }}{% if v.color != 'Único' %} · {{ v.color }}{% endif %}</div>
+    <svg class="bc" data-code="{{ v.codigo_barras }}"></svg><div class="p">{{ p.precio_venta|money }}</div></div>
+{% endfor %}{% endfor %}
+</div>
+<script src="{{ url_for('static', filename='vendor/JsBarcode.all.min.js') }}"></script>
+<script>
+document.querySelectorAll('.bc').forEach(s=>{const c=s.dataset.code;
+  try{JsBarcode(s,c,{format:/^\d{13}$/.test(c)?'EAN13':'CODE128',height:40,fontSize:12,margin:0,width:1.4});}
+  catch(e){JsBarcode(s,c,{format:'CODE128',height:40,fontSize:12,margin:0});}});
+</script>
+</body></html>

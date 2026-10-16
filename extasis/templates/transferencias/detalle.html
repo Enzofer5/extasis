@@ -1,0 +1,21 @@
+{% extends "base.html" %}
+{% from "_macros.html" import csrf %}
+{% block title %}Transferencia #{{ t.id }}{% endblock %}
+{% block content %}
+<div class="page-head"><div><h1>Transferencia #{{ t.id }}</h1><div class="sub">{{ t.fecha|fecha }} · {{ t.usuario }}</div></div>
+  <div class="actions"><button class="btn" onclick="window.print()"><i data-lucide="printer"></i>Imprimir remito</button>
+  {% if t.estado == 'En tránsito' and (es_admin() or g.user.ubicacion_id == t.destino_id) %}
+  <form method="post" action="{{ url_for('transferencias.recibir', tid=t.id) }}" data-confirm="¿Confirmás que recibiste toda la mercadería?">{{ csrf() }}
+    <button class="btn btn-primary" type="submit"><i data-lucide="package-check"></i>Confirmar recepción</button></form>{% endif %}</div></div>
+<div class="card"><dl class="dl">
+  <dt>Origen</dt><dd>{{ t.origen }}</dd><dt>Destino</dt><dd>{{ t.destino }}</dd>
+  <dt>Estado</dt><dd><span class="badge {{ 'success' if t.estado == 'Completada' else 'warning' }}">{{ t.estado }}</span></dd>
+  {% if t.solicitud_id %}<dt>Solicitud</dt><dd><a href="{{ url_for('solicitudes.detalle', sid=t.solicitud_id) }}">N° {{ t.solicitud_id }}</a></dd>{% endif %}
+  {% if t.observaciones %}<dt>Observaciones</dt><dd>{{ t.observaciones }}</dd>{% endif %}
+</dl></div>
+<div class="table-wrap mt-2"><table class="cards">
+  <thead><tr><th>Producto</th><th>Talle</th><th>Color</th><th>Código</th><th class="num">Cantidad</th></tr></thead>
+  <tbody>{% for d in det %}<tr><td class="cell-main">{{ d.producto }}</td><td>{{ d.talle }}</td><td>{{ d.color }}</td><td class="mono">{{ d.codigo_barras }}</td><td class="num">{{ d.cantidad }}</td></tr>{% endfor %}</tbody>
+  <tfoot><tr><td colspan="4">Total unidades</td><td class="num">{{ det|sum(attribute='cantidad') }}</td></tr></tfoot>
+</table></div>
+{% endblock %}
